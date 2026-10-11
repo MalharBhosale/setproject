@@ -84,6 +84,24 @@ Findings:
 - `DRAWING NAME` has 482 distinct values with 16 repeated. Names are `SAMPLE_<4 digits>.JPG`, so some repeats are expected by chance; this is not evidence of duplicate sheets, and duplicates have not been checked.
 - `lines2` has 68 rows on 393 sheets and 70-112 on the rest. Purpose still unknown.
 
+### Duplicate check and split (2026-10-11)
+
+Duplicate check over all 124,750 sheet pairs, on annotation content:
+- No two sheets share an identical set of lines, symbols or symbol positions.
+- Highest pairwise overlap (Jaccard): lines 0.267, symbol positions 0.011, identifier tags 0.056. The line overlap is consistent with a shared sheet frame and title block, but that cause was not confirmed.
+- The 16 repeated `DRAWING NAME` values are coincidences: those pairs overlap no more than unrelated sheets (at most 0.18 on lines).
+- Not checked: image-level similarity, or sheets that share a layout after shifting or scaling.
+
+Split, written by `python src/make_split.py` to `docs/split.json` (seed 20261011, by whole sheet):
+
+| Part | Sheets | Symbols | Instances per class (min / max) |
+|---|---|---|---|
+| train | 350 | 41,480 | 1,143 / 3,951 |
+| val | 75 | 8,913 | 228 / 810 |
+| test | 75 | 9,105 | 231 / 864 |
+
+All 32 classes appear in every part. This is our own split: the authors' 4:1 assignment and the YOLO repository's 400/100 assignment are not published per sheet, so results will not be directly comparable with theirs. The test part must not be used for any tuning.
+
 ## What it supports for this project
 
 | Need | Supported? |
