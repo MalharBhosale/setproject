@@ -27,8 +27,9 @@ The paper is not yet in `docs/paper/references.bib`; its citation has not been r
 | Sheets | 500 subfolders named 0-499, none missing | Yes, folder listing |
 | Images | `image_2.tar.gz`, 968,795,855 bytes, 500 JPEGs under `image_2/`, 1,227 MB uncompressed. SHA-256 `BC088BA0A926DC527EAD93BAEE92B5D3ABA9E41DB2B2913A2AE0F985CBF5996E` | Yes, downloaded 2026-10-11 and read end to end |
 | Masks | `mask.tar.gz`, size not shown | Not downloaded |
-| Image size | 7168 x 4562 px, RGB, for `335.jpg` | One image only |
-| Symbol size | Roughly 30-60 px across, under 1% of image width | Sheet 0 boxes and one viewed crop |
+| Image size | 7168 x 4561 px on 300 sheets, 7168 x 4562 px on 200; RGB | Yes, all 500 images |
+| Symbol size | Longest side: median 88 px, 99th percentile 153 px, max 157 px (about 1-2% of image width). An earlier estimate of 30-60 px in this card was wrong. | Yes, all 59,498 boxes |
+| Boxes outside their image | 0 | Yes, all 500 sheets |
 | Symbol classes | 32 | Paper and YOLO `data.yaml` |
 | Author split | 4:1 train-test | Paper; the sheet assignment is unverified |
 
