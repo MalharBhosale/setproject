@@ -48,6 +48,19 @@ Seven NumPy `.npy` files per sheet. Column meanings are our reading of the store
 
 `symbols`, `words`, `lines` and `linker` are pickled object arrays. They were inspected without unpickling and reference only NumPy array constructors. Convert them once to JSON so pickles never need loading again.
 
+### Confirmed on sheet 335 (2026-10-11)
+
+- `335.jpg` matches annotation folder `335`: symbol and word boxes drawn on the image land exactly on the drawn symbols and text, and the title-block values agree.
+- Symbol and line boxes are [x1, y1, x2, y2]. Word boxes are [x1, y_bottom, x2, y_top].
+- The word flag is the text rotation in degrees (0 or 90).
+- Every symbol has exactly one linker row: [word id(s), line id]. No dangling ids.
+- Quirks to handle in code:
+  - The class column mixes types: the same glyph appears as the string `'21'` (7 untagged line-end instances) and the integer `21` (4 instances). Normalise to int.
+  - 14 of 107 symbols have no tag.
+  - For some classes the linked text is a size, not an identifier (e.g. reducer `2"x9"`), so it is not unique (`6"` occurs twice).
+  - Some word rows have near-zero-size boxes.
+- Class names are NOT confirmed. The YOLO repository's names are a third party's labels; under a class-minus-one offset only "Reducer" was checked against the image, and others look doubtful. Use class numbers and the paper's Figure 3 until verified.
+
 ## What it supports for this project
 
 | Need | Supported? |
