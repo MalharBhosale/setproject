@@ -1,3 +1,4 @@
 # Paper PDFs stay local: publisher copies usually cannot be redistributed
 papers/
 .venv/
+data/
