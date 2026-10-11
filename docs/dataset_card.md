@@ -61,6 +61,29 @@ Seven NumPy `.npy` files per sheet. Column meanings are our reading of the store
   - Some word rows have near-zero-size boxes.
 - Class names are NOT confirmed. The YOLO repository's names are a third party's labels; under a class-minus-one offset only "Reducer" was checked against the image, and others look doubtful. Use class numbers and the paper's Figure 3 until verified.
 
+### Whole-dataset integrity (2026-10-11, all 500 sheets)
+
+Produced by `python src/convert_annotations.py` after `python src/download_annotations.py`.
+
+| Measure | Value |
+|---|---|
+| Annotation files downloaded | 3,500 of 3,500, all valid `.npy` |
+| Sheets converted to JSON | 500 of 500; 0 load failures, 0 structural problems |
+| Symbols | 59,498; per sheet min 75, mean 119.0, max 200 |
+| Words | 137,967; 134,673 horizontal, 3,294 rotated 90 degrees |
+| Lines | 125,267; 112,330 solid, 12,937 dashed; 54,520 carry a label |
+| Symbols without a linked line | 0 |
+| Untagged symbols | 7,282 (12.2%) |
+| Repeated tag strings within a sheet | 2,320 |
+
+Findings:
+- **Untagged symbols are exactly two classes.** Every instance of class 21 (5,625) and class 24 (1,657) is untagged; no other class ever is. Each links to a placeholder word with empty text and a near-zero box, which accounts for all 7,282 near-zero word boxes.
+- **Class balance is near-uniform** at 1,620-1,840 instances per class, except class 21 with 5,625 (it is present on all 500 sheets).
+- **Linked text means different things by class.** Repeats come almost entirely from classes whose text is not an identifier: class 30 (constant `STA`, 1,146 repeats), classes 17-20 (sizes such as `6"` or `1"x6"`), classes 22-23 (codes such as `CS-93`, `INS ( 13°C )`). Classes with identifier-style tags (e.g. `KL-81809`) repeat almost never.
+- **Our symbol count (59,498) is 500 higher than the YOLO repository's README (58,998).** Unexplained; the difference is exactly one per sheet.
+- `DRAWING NAME` has 482 distinct values with 16 repeated. Names are `SAMPLE_<4 digits>.JPG`, so some repeats are expected by chance; this is not evidence of duplicate sheets, and duplicates have not been checked.
+- `lines2` has 68 rows on 393 sheets and 70-112 on the rest. Purpose still unknown.
+
 ## What it supports for this project
 
 | Need | Supported? |
