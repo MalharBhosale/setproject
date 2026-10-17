@@ -3,3 +3,4 @@ papers/
 .venv/
 data/
 __pycache__/
+*.pt
