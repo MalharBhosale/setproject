@@ -149,3 +149,24 @@ What it could add:
 - 12 real drawings for an out-of-distribution test at the coarse-class and count level only; tag checks are impossible without text labels.
 
 Open questions: the licence of the original OPEN100 drawings; how the 32 Dataset-P&ID classes map to the coarse labels; whether 12 drawings are enough for anything beyond a qualitative check.
+
+### PID2Graph parts fetched and aligned (2026-10-17)
+
+Fetched by HTTP range requests (20.6 MB transferred of 8.87 GB) into `data/pid2graph/`:
+- `dataset_pid/`: the 500 GraphML files for our sheets (70.3 MB). Images not fetched; we already have them.
+- `open100/`: the 12 real OPEN100 plans, PNG plus GraphML (10.9 MB).
+
+**Sheet numbering differs.** PID2Graph graph N is not our sheet N (only 102 of 500 keep their number). Each graph was matched to a sheet by voting on exactly equal symbol boxes: all 500 graphs map one-to-one to distinct sheets, and with the matched sheet 100% of our symbols coincide with a PID2Graph symbol node (IoU >= 0.5) on every sheet. The mapping is in `docs/pid2graph_graph_to_sheet.json` (graph number -> our sheet number). Any use of these graphs must go through it, and must respect `docs/split.json` by OUR sheet number.
+
+**Class mapping derived from the matched boxes** (share of each class's matches taking the main label):
+
+| PID2Graph label | Our classes |
+|---|---|
+| valve | 1-7, 9-16, 25 (95-99%) |
+| general | 8 (91%), 17-23 (91-100%) |
+| arrow | 24 (96%) |
+| instrumentation | 26-32 (97-99%) |
+
+Graph contents over the 500 sheets: 59,498 symbol-level nodes plus 166,259 line-junction nodes (`connector`, `crossing`) and 2,000 `background` nodes; 252,526 edges (242,117 `solid`, 10,409 `non-solid`). Edges join symbols through junction nodes, so symbol-to-symbol connectivity needs a graph traversal; that conversion is not written yet.
+
+**OPEN100 (12 real plans):** images 1994-3342 px wide (our sheets are 7168 px); 57-210 symbol nodes per plan; labels include `tank`, `pump` and `inlet/outlet`, which have no counterpart in our 32 classes. No text annotation.
