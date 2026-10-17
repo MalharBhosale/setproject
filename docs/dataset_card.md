@@ -129,3 +129,23 @@ Working position: use for research and report results with citation. Do NOT redi
 - Uniform symbol placement is unlike real plant density.
 - No held-out test split is defined beyond the authors' 4:1 statement; near-duplicate sheets across splits have not been checked.
 - Only one sheet's annotations and no image have been inspected by us.
+
+## Related dataset: PID2Graph (inspected 2026-10-17, not downloaded)
+
+Zenodo record 14803338, CC BY-SA 4.0, published 2025-02-14 by Stürmer, Graumann & Koch (DLR); cite their IEEE DSAA 2025 paper. One zip of 8.66 GB, 74,655 entries. Inspected by reading the zip's table of contents and four annotation files over HTTP range requests (about 9 MB transferred).
+
+| Subset (Complete plans) | Plans | Image | Notes |
+|---|---|---|---|
+| Dataset PID | 500 | PNG, 7168 x 4562 | The same 500 sheets as Dataset-P&ID, re-annotated as graphs |
+| PID2Graph OPEN100 | 12 | PNG, 2604 x 1744 (first plan) | Real, publicly available P&IDs from the OPEN100 reactor |
+| PID2Graph Synthetic | 250 | JPEG | Synthetic plans with ISO 10628 symbols |
+
+A "Patched" copy of each subset splits the plans into overlapping patches (each with its own graphml and an `_xy_shifts.npy` file).
+
+Annotation format: one GraphML file per plan. Nodes carry a `label` and a box (`xmin`, `ymin`, `xmax`, `ymax`); edges carry `edge_label` (line style, e.g. `solid`). Node labels are coarse: valve, general, instrumentation, tank, pump, arrow, inlet/outlet, plus line junctions (`crossing`, `connector`) and `background`. **No text or tags are annotated.**
+
+What it could add:
+- Symbol-to-symbol connectivity ground truth for our 500 sheets (needed for the graph ablation). The sheet numbering and alignment with Dataset-P&ID are not yet checked.
+- 12 real drawings for an out-of-distribution test at the coarse-class and count level only; tag checks are impossible without text labels.
+
+Open questions: the licence of the original OPEN100 drawings; how the 32 Dataset-P&ID classes map to the coarse labels; whether 12 drawings are enough for anything beyond a qualitative check.
