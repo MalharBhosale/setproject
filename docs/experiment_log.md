@@ -166,3 +166,21 @@ The benchmark specification carries no connectivity (the BOM lists components an
 Only 2 association errors involved a pipe's line label. Association errors concentrate in the size classes 19, 17, 18 and 20 (66, 39, 19, 17), whose texts repeat on a sheet, so some of them are misreads that happen to equal another size. 11.1% is therefore an upper bound.
 
 Conclusion: even perfect connectivity could fix at most about 11% of tag errors here; the bottleneck is reading. A graph-reasoning ablation is not justified for the task as defined and is deferred. Graph reasoning becomes testable only with a connectivity-bearing specification (for example a line list) and connectivity discrepancies; PID2Graph's aligned graphs for all 500 sheets (`docs/pid2graph_graph_to_sheet.json`) would support building that benchmark extension.
+
+## open100_v1: qualitative real-drawing check (2026-10-18; post hoc)
+
+`python src/eval_open100.py data/runs/Kaggle1/runs/detector/weights/best.pt data/runs/open100_v1`. The kaggle_v1 detector, trained only on synthetic sheets, run on the 12 real OPEN100 P&IDs from PID2Graph (CC BY-SA 4.0; licence of the original drawings unconfirmed, so no images are committed). Our 32 classes are mapped to PID2Graph's coarse labels (mapping from docs/dataset_card.md). Matching at IoU >= 0.5, score >= 0.25. OPEN100 symbols are about 4 times smaller than ours (median longest side 22 px vs 88 px), so the plans were run at native size and upscaled 4x. The 4x factor was chosen from the plans' annotated box sizes, which is an advantage a deployed system would not have without knowing the drawing scale.
+
+| Label | Symbols | Recall, native | Recall, 4x | Precision, 4x |
+|---|---|---|---|---|
+| instrumentation | 350 | 0.87 | 1.00 | 0.88 |
+| arrow | 451 | 0.20 | 0.82 | 0.83 |
+| valve | 257 | 0.47 | 0.83 | 0.64 |
+| general | 234 | 0.11 | 0.62 | 0.35 |
+| tank / pump / inlet-outlet | 35 / 16 / 96 | 0 | 0 | n/a (classes absent from training data) |
+
+Over the four representable labels at 4x: 1,078 of 1,292 symbols found with the right coarse label (recall 0.834), 516 false detections (precision 0.676). Per-plan predictions are in `data/runs/open100_v1/`.
+
+Visual inspection of plan 0: most valves, instrument bubbles and arrows are found; misses are equipment boxes and half-circle symbols unlike anything in the synthetic data; some false detections are label-mapping disagreements (a boxed `T` mapped to instrumentation is annotated `general`).
+
+Interpretation: the synthetic-trained detector transfers partly to real drawings, and only at a matched scale; accuracy falls from 0.9999 (synthetic test) to about 0.83 recall and 0.68 precision on coarse labels. 147 of 1,439 symbols (10%) belong to classes the training data never had. Tag reading and verification could not be tested on these plans (no text annotation), so every verification result in this project remains a synthetic-data result. Twelve plans support a qualitative statement only.
