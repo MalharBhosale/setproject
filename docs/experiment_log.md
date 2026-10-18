@@ -55,3 +55,30 @@ Confidence separates right from wrong for both: mean confidence on correct vs wr
 Choice: EasyOCR. Tag accuracy is within 1.6 points of RapidOCR, it is 8 times faster on CPU, and its errors are systematic confusions rather than truncation. Untested improvements: restricting EasyOCR to the characters tags use, and better handling of vertical text, where it trails RapidOCR.
 
 Interpretation: about 19% of tags are misread even with perfect text boxes, against near-perfect detection. If H1 holds, OCR is where false FAIL verdicts will come from.
+
+## pipeline_v1: end-to-end extraction and verification, no abstention (2026-10-18)
+
+`python src/pipeline.py data/runs/Kaggle1/predictions_val data/runs/pipeline_v1 val`. Detector boxes (kaggle_v1, score >= 0.25) plus EasyOCR: text is found with EasyOCR's detector in a region around each symbol (bubble interior trimmed 12% for classes 26-32; 80 px around the symbol otherwise), boxes on one line are joined, each piece is read with the Step 4.7 settings (4 px margin, character allowlist, vertical text turned clockwise), and each piece of text is assigned to exactly one symbol. Design choices came from training-sheet statistics and from validation sheets 3 and 5 (tuning sheets). About 27 s per sheet on CPU.
+
+**Tags, 75 validation sheets** (all classes that carry text): 4,888 exact of 7,875 (**62.1%**); 2,986 wrong; 1 symbol not detected. For comparison, reading perfectly located words gave 89.0% on the tuning sheets (Step 4.7 with the allowlist), so finding and assigning text costs roughly 25 points.
+
+**Verification of the 300 validation cases with the existing deterministic verifier:**
+
+| True verdict | Reported PASS | Reported FAIL |
+|---|---|---|
+| PASS (75 matching pairs) | 0 | **75** |
+| FAIL (225 seeded pairs) | 0 | 225 |
+
+**False FAIL rate on matching pairs: 100% (75 / 75).** Every clean drawing-BOM pair is declared non-conforming.
+
+| Finding type | True found | False reported | Missed |
+|---|---|---|---|
+| MISSING | 142 | 5,588 | 1 |
+| EXTRA | 62 | 5,626 | 35 |
+| TAG | 104 | 2,096 | 41 |
+| TYPE | 89 | 15 | 51 |
+| QUANTITY | 61 | 7,306 | 89 |
+
+About 20,600 false findings over 300 cases (about 69 per case) against 458 true ones. A tag misread by more than 2 characters becomes a MISSING plus an EXTRA; a misread size or code makes the counts of two (class, text) groups disagree, hence the QUANTITY flood.
+
+Interpretation: **H1 is supported on validation data**: extraction errors, almost all from OCR, turn every matching pair into a FAIL. The FAIL verdict without abstention is uninformative here (it is FAIL for every case). This motivates the confidence-aware REVIEW outcome (H2) and shows that end-to-end tag reading is the main weakness to report. Not yet measured on the test sheets.
