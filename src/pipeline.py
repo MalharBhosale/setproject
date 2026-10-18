@@ -162,10 +162,11 @@ def tag_accuracy(comps, sheet):
 
 
 def main():
-    preds_dir, out = Path(sys.argv[1]), Path(sys.argv[2])
-    part = sys.argv[3] if len(sys.argv) > 3 else "val"
-    if part == "test":
-        sys.exit("refusing to touch the test sheets before thresholds are frozen")
+    args = [a for a in sys.argv[1:] if a != "--allow-test"]
+    preds_dir, out = Path(args[0]), Path(args[1])
+    part = args[2] if len(args) > 2 else "val"
+    if part == "test" and "--allow-test" not in sys.argv:
+        sys.exit("refusing to touch the test sheets: freeze the configuration first (then pass --allow-test once)")
     import easyocr
     import numpy as np
     from PIL import Image

@@ -106,3 +106,24 @@ Interpretation:
 - Against the no-abstention baseline (100% coverage, 25% risk), rule B decides half of the cases automatically with 4% of those decisions wrong. Rule A cannot get under 5% risk except by trusting no text at all. On validation data this supports H2 for rule B, not for rule A.
 - **No matching pair is ever passed automatically** (PASS->PASS is 0 at every tau). All automatic decisions are FAILs; certifying a drawing as conforming still needs a human. This limits the practical claim and must be stated.
 - tau and the format rule were chosen on these same validation cases, so these figures are optimistic. They must be confirmed once on the test sheets with tau frozen at 0.98.
+
+## FROZEN CONFIGURATION for the one-time test run (recorded 2026-10-18, before any test sheet was processed)
+
+Up to this entry no test sheet has been detected, OCR-read or verified; the detector never saw test tiles. Everything below is fixed and will not be changed after seeing test results.
+
+| Component | Frozen setting |
+|---|---|
+| Detector | `data/runs/Kaggle1/runs/detector/weights/best.pt`, sha256 `9e7456951193029c874d9b320c0b3b1f11848acc5a7d07a55f01b623891a2d99` |
+| Sheet detection | `src/detect_sheets.py`: tile 1024, overlap 256, edge drop 2 px, class-wise NMS 0.5, boxes kept at score >= 0.01 |
+| Extraction | `src/pipeline.py`: detector score >= 0.25; MARGIN 80; INSET 0.12; READ_PAD 4; JOIN 0.6; VERTICAL_TURN 3 (clockwise); EasyOCR 1.7.2 English with the allowlist in `ALLOW` |
+| Decision | `src/decide.py`: DET_MIN 0.5; rule B (OCR confidence + format shapes learned from the 350 training sheets); **tau = 0.98** |
+| Benchmark | `docs/benchmark_manifest.json` test part: 300 cases on 75 sheets (75 PASS, 225 FAIL) |
+
+Commands, run once:
+1. `python src/detect_sheets.py data/runs/Kaggle1/runs/detector/weights/best.pt data/runs/Kaggle1 test --allow-test`
+2. `python src/pipeline.py data/runs/Kaggle1/predictions_test data/runs/pipeline_v1 test --allow-test`
+3. `python src/decide.py data/runs/pipeline_v1/extracted_test data/runs/decide_v1 test --frozen-tau=0.98`
+
+Headline numbers to report: sheet-level detection precision and recall; end-to-end tag exact rate; false FAIL rate without abstention; coverage and risk at tau = 0.98 for rule B; rule A at tau = 0.98 for comparison. The full test risk-coverage curve is descriptive only.
+
+H3 (calibration) was not tested before this run. Any H3 analysis afterwards is post hoc and cannot change these settings.

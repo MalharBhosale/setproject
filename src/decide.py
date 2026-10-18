@@ -90,15 +90,20 @@ def choose(rows, max_risk=MAX_RISK):
 
 
 def main():
-    ext, out = Path(sys.argv[1]), Path(sys.argv[2])
-    part = sys.argv[3] if len(sys.argv) > 3 else "val"
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    ext, out = Path(args[0]), Path(args[1])
+    part = args[2] if len(args) > 2 else "val"
+    frozen = next((float(a.split("=")[1]) for a in sys.argv if a.startswith("--frozen-tau=")), None)
+    if part == "test" and frozen is None:
+        sys.exit("on test sheets tau must be frozen in advance: pass --frozen-tau=<value chosen on validation>")
     out.mkdir(parents=True, exist_ok=True)
     cases = [c for c in json.loads(Path("docs/benchmark_manifest.json").read_text(encoding="utf-8"))["cases"] if c["part"] == part]
     comps = {s: json.loads((ext / f"{s}.json").read_text(encoding="utf-8")) for s in {c["sheet"] for c in cases}}
     shapes = tag_shapes(json.loads(Path("docs/split.json").read_text(encoding="utf-8"))["train"])
     for name, sh in (("confidence only", None), ("confidence + format", shapes)):
         rows = sweep(cases, comps.__getitem__, shapes=sh)
-        best = choose(rows)
+        # on test the operating point is the frozen tau, never one chosen by looking at test results
+        best = choose(rows) if frozen is None else next(r for r in rows if abs(r["tau"] - frozen) < 1e-9)
         report(name, part, rows, best, out)
 
 
