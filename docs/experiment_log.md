@@ -127,3 +127,28 @@ Commands, run once:
 Headline numbers to report: sheet-level detection precision and recall; end-to-end tag exact rate; false FAIL rate without abstention; coverage and risk at tau = 0.98 for rule B; rule A at tau = 0.98 for comparison. The full test risk-coverage curve is descriptive only.
 
 H3 (calibration) was not tested before this run. Any H3 analysis afterwards is post hoc and cannot change these settings.
+
+## TEST RESULTS: one-time run with the frozen configuration (2026-10-18)
+
+Run after the freeze commit `16db1d2` (committed 2026-10-18 21:48:01 +0530), with the three commands listed there and no change to any setting. Intervals are 95% bootstrap intervals over the 75 test sheets (`python src/bootstrap_ci.py test 0.98`; 2,000 resamples, seed 0).
+
+| Measure | Test | Validation (for comparison) |
+|---|---|---|
+| Detection, sheet level | precision 0.9999, recall 1.0000 (9,105 TP, 1 FP, 0 FN) | 0.9997 / 0.9999 |
+| End-to-end tag exact | 61.6% (4,924 of 7,991) | 62.1% |
+| No abstention: false FAIL rate on matching pairs | **100% (75 / 75)** | 100% |
+| No abstention: coverage / risk | 100% / 25.0% | 100% / 25.0% |
+| Rule A (confidence only) at tau 0.98: coverage / risk | 96.0% / 24.0% | n/a |
+| **Rule B (confidence + format) at frozen tau 0.98: coverage** | **52.3% [46.3%, 58.3%]** | 50.3% [45.0%, 56.0%] |
+| **Rule B at frozen tau 0.98: risk** | **6.4% [3.1%, 9.6%]** | 4.0% [1.4%, 6.9%] |
+| Rule B verdicts | PASS->FAIL 10, PASS->REVIEW 65, FAIL->FAIL 147, FAIL->REVIEW 78 | 6 / 69 / 145 / 80 |
+| Rule B supported findings | precision 0.728, recall 0.301 | 0.796 / 0.319 |
+
+Findings without abstention (test): MISSING 119 true / 5,714 false; EXTRA 98 / 5,764 (50 missed); TAG 98 / 2,489 (44 missed); TYPE 79 / 20 (39 missed); QUANTITY 62 / 6,991 (86 missed).
+
+Reading the results honestly:
+- **H1 supported on test:** without abstention every matching pair is declared FAIL.
+- **H2 supported on test for rule B, with a caveat:** risk falls from 25.0% to 6.4% while half the cases are still decided automatically. Rule A barely helps (24.0%). But the **5% target chosen on validation is not met on test** (6.4%, interval 3.1% to 9.6%). The validation figure of 4.0% was optimistic, as expected from choosing tau on it.
+- **No matching pair is ever passed automatically** on test either: 65 of 75 go to REVIEW and 10 are wrongly failed. Every automatic decision is a FAIL.
+- Coverage is close between validation and test, so the trade-off generalises; the risk estimate is uncertain with 75 sheets.
+- The test sheets are now used. Nothing may be tuned on them; any further change needs a new held-out set, or must be reported as post hoc.
