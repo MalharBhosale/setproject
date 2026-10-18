@@ -152,3 +152,17 @@ Reading the results honestly:
 - **No matching pair is ever passed automatically** on test either: 65 of 75 go to REVIEW and 10 are wrongly failed. Every automatic decision is a FAIL.
 - Coverage is close between validation and test, so the trade-off generalises; the risk estimate is uncertain with 75 sheets.
 - The test sheets are now used. Nothing may be tuned on them; any further change needs a new held-out set, or must be reported as post hoc.
+
+## graph_v1: can graph reasoning help this task? (validation, 2026-10-18; post hoc relative to the test run)
+
+The benchmark specification carries no connectivity (the BOM lists components and tags, not connections) and no connectivity discrepancy is seeded, so a with-graph versus without-graph verification comparison has nothing to differ on. The one place connectivity could act in the current pipeline is association (which text belongs to which symbol). `python src/attribute_errors.py data/runs/pipeline_v1/extracted_val val` attributes every wrong end-to-end tag on the 75 validation sheets:
+
+| Cause | Wrong tags | Share of errors |
+|---|---|---|
+| Misread (own text read wrongly) | 2,214 | 74.1% |
+| No text assigned | 441 | 14.8% |
+| Association (reading within 2 edits of another text on the sheet, and closer to it than to the true tag) | 331 | 11.1% |
+
+Only 2 association errors involved a pipe's line label. Association errors concentrate in the size classes 19, 17, 18 and 20 (66, 39, 19, 17), whose texts repeat on a sheet, so some of them are misreads that happen to equal another size. 11.1% is therefore an upper bound.
+
+Conclusion: even perfect connectivity could fix at most about 11% of tag errors here; the bottleneck is reading. A graph-reasoning ablation is not justified for the task as defined and is deferred. Graph reasoning becomes testable only with a connectivity-bearing specification (for example a line list) and connectivity discrepancies; PID2Graph's aligned graphs for all 500 sheets (`docs/pid2graph_graph_to_sheet.json`) would support building that benchmark extension.
