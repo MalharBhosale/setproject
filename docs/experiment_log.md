@@ -82,3 +82,27 @@ Interpretation: about 19% of tags are misread even with perfect text boxes, agai
 About 20,600 false findings over 300 cases (about 69 per case) against 458 true ones. A tag misread by more than 2 characters becomes a MISSING plus an EXTRA; a misread size or code makes the counts of two (class, text) groups disagree, hence the QUANTITY flood.
 
 Interpretation: **H1 is supported on validation data**: extraction errors, almost all from OCR, turn every matching pair into a FAIL. The FAIL verdict without abstention is uninformative here (it is FAIL for every case). This motivates the confidence-aware REVIEW outcome (H2) and shows that end-to-end tag reading is the main weakness to report. Not yet measured on the test sheets.
+
+## decide_v1: confidence-aware PASS / REVIEW / FAIL on validation cases (2026-10-18)
+
+`python src/decide.py data/runs/pipeline_v1/extracted_val data/runs/decide_v1 val`. A component is reliable when its detector score is >= 0.5 and, for text-bearing classes, its OCR confidence is >= tau (rule B also requires a plausible format, below). A finding is supported when no unreliable component could explain it (EXTRA/TAG/TYPE: the component itself; MISSING: no unsupported EXTRA/TAG/TYPE of the same class; QUANTITY: no unreliable component of that class). Verdict: FAIL if any finding is supported, else REVIEW if any finding exists, else PASS. tau chosen by a rule fixed before looking at results: highest coverage with risk (wrong automatic decisions) <= 5%.
+
+**Rule A, OCR confidence only (planned rule): fails.** For tau up to 0.98 all 300 cases are decided and 25% are wrong (all 75 matching pairs FAIL); only at tau 1.0 (nothing text-bearing trusted) does risk reach 0%, at 23.7% coverage. Cause: every matching pair contains confident misreadings (at least 3 supported findings per pair at tau 0.9; 585 wrong tags have confidence 0.9-1.0, next to 3,579 right ones). Typical: truncation (`KL-80-` at 0.987), I read as 1 (`1J-74522` at 0.923), stray characters (`SDL 906)` at 0.908).
+
+**Rule B, confidence + format (revised after seeing rule A's failure on validation; test sheets untouched):** a reading must also match a shape seen for its class on the training sheets (letters -> A, digits -> 9, other characters kept; the letters themselves are not used, so the prefix cannot reveal the class).
+
+| tau | Coverage | Risk | PASS->FAIL | PASS->REVIEW | FAIL->FAIL | FAIL->REVIEW |
+|---|---|---|---|---|---|---|
+| 0.00 | 0.893 | 0.198 | 53 | 22 | 215 | 10 |
+| 0.90 | 0.623 | 0.086 | 16 | 59 | 171 | 54 |
+| 0.94 | 0.577 | 0.064 | 11 | 64 | 162 | 63 |
+| 0.96 | 0.543 | 0.055 | 9 | 66 | 154 | 71 |
+| **0.98 (chosen)** | **0.503** | **0.040** | 6 | 69 | 145 | 80 |
+| 1.00 | 0.237 | 0.000 | 0 | 75 | 71 | 154 |
+
+At the chosen tau, supported findings have precision 0.796 and recall 0.319 against the seeded discrepancies. Risk-coverage curves: `data/runs/decide_v1/risk_coverage_val_*.png`.
+
+Interpretation:
+- Against the no-abstention baseline (100% coverage, 25% risk), rule B decides half of the cases automatically with 4% of those decisions wrong. Rule A cannot get under 5% risk except by trusting no text at all. On validation data this supports H2 for rule B, not for rule A.
+- **No matching pair is ever passed automatically** (PASS->PASS is 0 at every tau). All automatic decisions are FAILs; certifying a drawing as conforming still needs a human. This limits the practical claim and must be stated.
+- tau and the format rule were chosen on these same validation cases, so these figures are optimistic. They must be confirmed once on the test sheets with tau frozen at 0.98.
