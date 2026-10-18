@@ -71,15 +71,15 @@ def truth_key(d):
     return finding_key({"type": d["type"], "drawing": d["before"], "bom": d["after"]})
 
 
-def main():
-    manifest = json.loads(Path("docs/benchmark_manifest.json").read_text(encoding="utf-8"))
-    sheets, score, verdicts, wrong = {}, defaultdict(Counter), defaultdict(Counter), []
-    for case in manifest["cases"]:
-        sid = case["sheet"]
-        if sid not in sheets:
-            sheets[sid] = symbol_rows(json.loads(Path(f"data/annotations/{sid}.json").read_text(encoding="utf-8")))
+def score_cases(cases, components_for):
+    """Run the verifier on each case. components_for(sheet_id) gives the drawing's components.
+
+    Returns per-type tp/fp/fn, a verdict table {part: {(true verdict, reported verdict): n}}, and the mismatched cases.
+    """
+    score, verdicts, wrong = defaultdict(Counter), defaultdict(Counter), []
+    for case in cases:
         bom = json.loads(Path(f"data/benchmark/boms/{case['case']}.json").read_text(encoding="utf-8"))
-        found = Counter(finding_key(f) for f in verify(sheets[sid], bom))
+        found = Counter(finding_key(f) for f in verify(components_for(case["sheet"]), bom))
         truth = Counter(truth_key(d) for d in case["discrepancies"])
         for key, n in (found & truth).items():
             score[key[0]]["tp"] += n
@@ -87,20 +87,32 @@ def main():
             score[key[0]]["fp"] += n
         for key, n in (truth - found).items():
             score[key[0]]["fn"] += n
-        verdict = "FAIL" if found else "PASS"
-        verdicts[case["part"]][verdict == case["verdict"]] += 1
+        verdicts[case["part"]][(case["verdict"], "FAIL" if found else "PASS")] += 1
         if found != truth:
             wrong.append((case["case"], sorted(map(str, found - truth)), sorted(map(str, truth - found))))
+    return score, verdicts, wrong
+
+
+def main():
+    cases = json.loads(Path("docs/benchmark_manifest.json").read_text(encoding="utf-8"))["cases"]
+    sheets = {}
+
+    def truth_components(sid):
+        if sid not in sheets:
+            sheets[sid] = symbol_rows(json.loads(Path(f"data/annotations/{sid}.json").read_text(encoding="utf-8")))
+        return sheets[sid]
+
+    score, verdicts, wrong = score_cases(cases, truth_components)
     print("ORACLE RUN: ground-truth components, no detector, no OCR. Upper bound only.")
-    print(f"cases: {len(manifest['cases'])}  cases with any wrong finding: {len(wrong)}")
+    print(f"cases: {len(cases)}  cases with any wrong finding: {len(wrong)}")
     for part in ("train", "val", "test"):
-        print(f"  {part:5} verdict correct: {verdicts[part][True]}/{sum(verdicts[part].values())}")
+        v = verdicts[part]
+        print(f"  {part:5} verdict correct: {v[('PASS', 'PASS')] + v[('FAIL', 'FAIL')]}/{sum(v.values())}")
     for t in TYPES:
         print(f"  {t:8} tp={score[t]['tp']:5} fp={score[t]['fp']:3} fn={score[t]['fn']:3}")
     for name, extra, missed in wrong[:10]:
         print(f"  WRONG {name}: reported-not-true={extra} true-not-reported={missed}")
     return 1 if wrong else 0
-
 
 if __name__ == "__main__":
     sys.exit(main())

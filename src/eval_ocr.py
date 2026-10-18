@@ -43,13 +43,13 @@ def tag_words(sheet):
                 yield s["id"], k, words[wid]
 
 
-def make_engine(name):
+def make_engine(name, allowlist=None):
     if name == "easyocr":
         import easyocr
         reader = easyocr.Reader(["en"], gpu=False, verbose=False)
 
         def read(img):
-            out = reader.recognize(img, detail=1)
+            out = reader.recognize(img, detail=1, allowlist=allowlist)
             return (" ".join(t for _, t, _ in out), min((c for _, _, c in out), default=0.0)) if out else ("", 0.0)
         return read
     if name == "rapidocr":
