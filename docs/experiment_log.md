@@ -36,3 +36,22 @@ All four errors, inspected on the drawings:
 - Sheet 154: a class-7 symbol also received a class-10 box (1 FP). The merge step suppresses duplicates within a class only.
 
 Interpretation: on this synthetic data the detector is near the ceiling, so detection errors alone will rarely cause false verdicts. Tag reading (OCR) is the step expected to drive REVIEW and false FAIL rates. The test sheets have not been touched.
+
+## ocr_v1: OCR engine comparison (2026-10-18)
+
+`python src/eval_ocr.py data/runs/ocr_v1 easyocr rapidocr`. Task: read the tag words of the 23 identifier classes. Each ground-truth word box is cropped and recognised alone, so this measures reading, not finding, the text. Tall boxes are tried rotated both ways and the more confident reading kept (the dataset's rotation label misses most vertical text; see dataset card). Crop margin tuned per engine on validation sheets 3, 5, 16, 37, 38 (EasyOCR 4 px, RapidOCR 24 px); results below are on the other 70 validation sheets. CPU only.
+
+Engines: EasyOCR 1.7.2 (Apache-2.0; PyTorch). RapidOCR 1.2.3 via onnxruntime 1.31.0 (Apache-2.0; runs PaddleOCR models). PaddleOCR itself cannot be installed: PaddlePaddle has no build for Python 3.14.
+
+| Engine | Tags | Tag exact | Tag, ignoring case and spaces | Word exact | Character error rate | Vertical words exact | ms per word |
+|---|---|---|---|---|---|---|---|
+| EasyOCR | 5,654 | 0.808 | 0.835 | 0.844 | 0.045 | 0.852 (1,769 / 2,077) | 63 |
+| RapidOCR | 5,654 | 0.824 | 0.825 | 0.835 | 0.074 | 0.971 (2,016 / 2,077) | 500 |
+
+Error character (wrong words): EasyOCR 1,142, mostly same-length character confusions (762; e.g. `IJ-79437` read `1J-79437`) and case (154). RapidOCR 1,212, mostly added or lost characters (925; e.g. `QR-57978,`, `LG-` for `LG-10`) and empty output (149), plausibly from neighbouring strokes inside its wider margin.
+
+Confidence separates right from wrong for both: mean confidence on correct vs wrong words, EasyOCR 0.897 vs 0.600, RapidOCR 0.806 vs 0.586. This supports using OCR confidence in the REVIEW decision (H3), pending calibration.
+
+Choice: EasyOCR. Tag accuracy is within 1.6 points of RapidOCR, it is 8 times faster on CPU, and its errors are systematic confusions rather than truncation. Untested improvements: restricting EasyOCR to the characters tags use, and better handling of vertical text, where it trails RapidOCR.
+
+Interpretation: about 19% of tags are misread even with perfect text boxes, against near-perfect detection. If H1 holds, OCR is where false FAIL verdicts will come from.

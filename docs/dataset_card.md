@@ -170,3 +170,7 @@ Fetched by HTTP range requests (20.6 MB transferred of 8.87 GB) into `data/pid2g
 Graph contents over the 500 sheets: 59,498 symbol-level nodes plus 166,259 line-junction nodes (`connector`, `crossing`) and 2,000 `background` nodes; 252,526 edges (242,117 `solid`, 10,409 `non-solid`). Edges join symbols through junction nodes, so symbol-to-symbol connectivity needs a graph traversal; that conversion is not written yet.
 
 **OPEN100 (12 real plans):** images 1994-3342 px wide (our sheets are 7168 px); 57-210 symbol nodes per plan; labels include `tank`, `pump` and `inlet/outlet`, which have no counterpart in our 32 classes. No text annotation.
+
+### Word rotation label is unreliable (found 2026-10-18)
+
+Over all 500 sheets (excluding the 7,282 near-zero placeholder boxes): 100,052 word boxes are wider than tall with rotation 0; 3,294 are taller than wide with rotation 90; and **27,339 are taller than wide but labelled rotation 0**. On sheet 3, all 25 such boxes were vertical tags, which OCR read correctly once the crop was turned upright (23 of 25 exact). The `rotation` field therefore under-reports vertical text; orientation should be judged from box shape. Not checked: whether every tall box with rotation 0 is vertical text.
