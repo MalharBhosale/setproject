@@ -213,3 +213,15 @@ Fixed in advance:
 5. **Disclosure.** The test sheets were already used once for v1. The v2 test run is a second, disclosed look. Both v1 and v2 test results will be reported whatever v2 shows, and nothing is tuned after the v2 test run.
 
 Headline numbers for v2: end-to-end tag exact rate; rule B coverage and risk at the frozen tau with sheet-level intervals; AURC; auto-PASS rate on matching pairs; review workload.
+
+## reader_v1: domain-trained CRNN text reader (Kaggle, 2026-10-19)
+
+Run: `training/kaggle_train_reader.ipynb` on a Tesla T4 (Python 3.13.15, torch 2.11.0+cu128), 12 epochs, batch 64, seed 0, on 78,783 training-sheet word crops. Outputs in `data/runs/reader_v1/`. The browser saved `crnn.pt` as `crnn.zip`; it was renamed, unchanged. Copied to `data/reader/crnn.pt`, sha256 `77c4592122b5f97fd4345095f58fc85572ae3736ee955c42b623095e314beac1`. The earlier one-epoch CPU trial is kept as `data/reader/crnn_cpu_epoch1.pt`.
+
+| Epoch | 1 | 2 | 4 | 6 | 8 | 9 | 11 (kept) | 12 |
+|---|---|---|---|---|---|---|---|---|
+| Val word exact | 0.933 | 0.971 | 0.989 | 0.962 | 0.994 | 0.9978 | **0.9978** | 0.9978 |
+
+`python src/train_reader.py eval`: 16,967 validation words, 99.78% exact, 37 wrong. Mean confidence 0.933 when right and 0.749 when wrong. Remaining errors are mostly I/J and dropped characters (`IQ` read as `JQ`, `GH-63446` as `GH-3446`). For comparison, EasyOCR read 80.8% of tags exactly from the same kind of perfect word boxes (ocr_v1), and Gadekar et al. (2026) report 0.995 with fine-tuned TrOCR.
+
+Caveat: the validation crops chose the kept epoch, so 99.78% is slightly optimistic; the v2 test run is the unbiased measurement. These are perfect word boxes; end-to-end reading also depends on text finding and assignment, which v2 leaves unchanged.
