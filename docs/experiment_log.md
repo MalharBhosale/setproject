@@ -264,3 +264,17 @@ Same notebook and settings as reader_v1 (Tesla T4, 12 epochs, batch 64, seed 0),
 | Exact on validation pipeline crops | 0.859 | 0.899 | 0.934 | 0.943 | 0.944 | **0.947** | 0.947 |
 
 Against 77.9% for the reader_v1 weights on the same crops. As before, these crops also chose the epoch, so 94.7% is slightly optimistic.
+
+## open100_labels_v1: tag transcription for the 12 real OPEN100 plans (2026-10-19)
+
+All 988 non-arrow, non-junction symbols (instrumentation 350, valve 257, general 234, inlet/outlet 96, tank 35, pump 16) were transcribed from the drawings, at the user's request, by the AI assistant (Claude) reading enlarged views of each symbol with its surroundings. **These are AI-transcribed labels, not independent human annotation**, and must be described as such; a human spot-check of a random sample is planned before they support any claim. Files (git-ignored, drawings' licence unconfirmed): `data/open100_labels/labels.csv` (all rows checked), the user's earlier partial file kept as `labels_user_partial.csv`, and `index.html` prefilled for review.
+
+Conventions:
+- **Instrument bubble:** letters, a space, the number, as printed (`PT 14086`, `TE 102B43`, `FCV XXX`); empty bubbles get an empty tag. Misprints are kept as printed (`LVC 1615`).
+- **Valve:** the tag of an instrument bubble joined to it by a leader line, or a label printed beside it (`V-1-100X`, `SP-01`); plain manual valves are empty; nearby but unconnected text is not used.
+- **General:** nozzle labels next to flanges (`N3`), equipment tags inside or under the symbol (`CVCS-HX-111`), detail markers (`DET A SHT 2`); fittings without text are empty.
+- **Tank / pump:** the equipment tag as printed (`CND-TK-165`, `RHR-PU-120A`); two-line tags are joined with a space (`CVCS ION-114A`).
+- **Inlet/outlet:** all text inside the connector, lines joined top to bottom (`TBS PID 240-1 TURBINE SYSTEM`).
+- **Unsure (32 rows):** part of the label is cut off or ambiguous, the nozzle label could belong to either of two flanges, or the source graph's class is wrong (flow elements labelled pump, bubbles labelled valve, a flange labelled inlet/outlet).
+
+Result: 754 of 988 symbols carry a tag (instrumentation 348, general 131, valve 129, inlet/outlet 95, tank 35, pump 16). The OCR suggestions pre-filled on the page were exactly right for 120 of the 754 (100 of 350 instrument bubbles). Agreement with the user's 13 earlier corrections: 12 identical; the 13th was nearby but unconnected text that the convention leaves empty.

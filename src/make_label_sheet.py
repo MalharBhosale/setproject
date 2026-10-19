@@ -62,9 +62,9 @@ def page(rows):
     items = "\n".join(
         f'<div class="item" data-key="{r["plan"]}_{r["node"]}" data-label="{html.escape(r["label"])}"><img src="crops/{r["crop"]}" alt="plan {r["plan"]} node {r["node"]}" loading="lazy">'
         f'<div class="meta"><b>plan {r["plan"]}</b> &middot; {html.escape(r["label"])} &middot; node {r["node"]}'
-        f'<label>Tag (empty if none) <input type="text" value="{html.escape(r["suggestion"], quote=True)}" data-suggestion="{html.escape(r["suggestion"], quote=True)}"></label>'
-        f'<label class="chk"><input type="checkbox" class="checked"> checked</label>'
-        f'<label class="chk"><input type="checkbox" class="unsure"> unsure / unreadable</label></div></div>'
+        f'<label>Tag (empty if none) <input type="text" value="{html.escape(r.get("tag", r["suggestion"]), quote=True)}" data-suggestion="{html.escape(r["suggestion"], quote=True)}"></label>'
+        f'<label class="chk"><input type="checkbox" class="checked"{" checked" if r.get("checked") else ""}> checked</label>'
+        f'<label class="chk"><input type="checkbox" class="unsure"{" checked" if r.get("unsure") else ""}> unsure / unreadable</label></div></div>'
         for r in rows)
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OPEN100 tag labels</title>
@@ -82,7 +82,7 @@ Only checked rows count. Progress saves in this browser. <span id="count"></span
 <button id="export">Export CSV</button><button id="filter">Show instruments only</button><button id="reset">Restore suggestions</button></header>
 {items}
 <script>
-const KEY='open100-labels-v1';
+const KEY='open100-labels-v2';  // v2: page prefilled with transcribed labels (items.json tag/checked/unsure)
 let saved={{}}; try{{saved=JSON.parse(localStorage.getItem(KEY)||'{{}}')}}catch(e){{}}
 const items=[...document.querySelectorAll('.item')];
 function store(){{const s={{}};items.forEach(d=>{{s[d.dataset.key]={{tag:d.querySelector('input[type=text]').value,unsure:d.querySelector('.unsure').checked,checked:d.querySelector('.checked').checked}}}});
