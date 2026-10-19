@@ -44,6 +44,9 @@ python -m venv .venv
 | Extract + verify | `python src/pipeline.py data/runs/Kaggle1/predictions_val data/runs/pipeline_v1 val` | tag accuracy, H1 |
 | Decide | `python src/decide.py data/runs/pipeline_v1/extracted_val data/runs/decide_v1 val` | risk-coverage sweep, H2 |
 | Intervals | `python src/bootstrap_ci.py test 0.98` | sheet-level bootstrap |
+| Selective metrics | `python src/selective_metrics.py data/runs/pipeline_v1/extracted_val val` | AURC, format-only ablation, paired A vs B, review workload |
+| Text reader (v2) | `python src/train_reader.py build`, `python training/make_reader_package.py`, then run `training/kaggle_train_reader.ipynb` on Kaggle; `--reader=crnn` in `pipeline.py` | `crnn.pt`; protocol pre-registered in the experiment log |
+| Real-drawing tag labels | `python src/make_label_sheet.py`, then open `data/open100_labels/index.html` | local page with OCR suggestions; export `labels.csv` |
 | Figures | `python src/make_figures.py` | `docs/paper/figures/` |
 | Extras | `python src/attribute_errors.py ...`, `python src/pid2graph.py fetch|map`, `python src/eval_open100.py ...` | error attribution, graph alignment, real-drawing check |
 
