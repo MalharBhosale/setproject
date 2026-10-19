@@ -184,3 +184,19 @@ Over the four representable labels at 4x: 1,078 of 1,292 symbols found with the 
 Visual inspection of plan 0: most valves, instrument bubbles and arrows are found; misses are equipment boxes and half-circle symbols unlike anything in the synthetic data; some false detections are label-mapping disagreements (a boxed `T` mapped to instrumentation is annotated `general`).
 
 Interpretation: the synthetic-trained detector transfers partly to real drawings, and only at a matched scale; accuracy falls from 0.9999 (synthetic test) to about 0.83 recall and 0.68 precision on coarse labels. 147 of 1,439 symbols (10%) belong to classes the training data never had. Tag reading and verification could not be tested on these plans (no text annotation), so every verification result in this project remains a synthetic-data result. Twelve plans support a qualitative statement only.
+
+## selective_v1: AURC, format-only ablation, paired comparison and review workload (2026-10-19; post hoc on the frozen outputs)
+
+`python src/selective_metrics.py data/runs/pipeline_v1/extracted_<part> <part>`; no setting changed. Each case is scored by the highest tau at which a rule still decides it automatically, giving an exact risk-coverage ranking; AURC is the mean risk over all coverage levels. Format-only is rule B with no confidence threshold. Paired intervals: 2,000 sheet-level bootstrap resamples, seed 0.
+
+| Rule | Val coverage / risk at tau 0.98 | Val AURC | Test coverage / risk at tau 0.98 | Test AURC |
+|---|---|---|---|---|
+| A: confidence only | 98.0% / 24.8% | 0.139 | 96.0% / 24.0% | 0.154 |
+| Format only (no threshold) | 89.3% / 19.8% | n/a | 94.7% / 23.2% | n/a |
+| **B: confidence + format** | 50.3% / 4.0% | **0.077** | 52.3% / 6.4% | **0.090** |
+
+Paired, A minus B: test AURC difference 0.064 [0.051, 0.080]; test risk difference at tau 0.98, 17.6 points [14.5, 20.9]. Validation: 0.062 [0.050, 0.074] and 20.9 points [17.9, 23.5].
+
+Neither signal alone makes automatic decisions trustworthy; only the combination does.
+
+**Review workload (rule B, tau 0.98):** in REVIEW cases the median share of untrusted components is 56.7% on test (57.3% on validation), with a median of 66 flagged findings. The rule routes cases correctly but leaves a human most of each REVIEW drawing to check. **No matching pair is passed automatically under any rule** (0 of 75 on both splits). Both limits trace to end-to-end tag reading (61.6%).
