@@ -4,3 +4,6 @@ papers/
 data/
 __pycache__/
 *.pt
+research_notes/
+reports/
+.claude-flow/

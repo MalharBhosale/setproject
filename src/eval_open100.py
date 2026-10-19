@@ -9,14 +9,13 @@ import glob
 import json
 import sys
 import tempfile
-import xml.etree.ElementTree as ET
 from collections import Counter
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from detect_sheets import EVAL_SCORE, iou, predict_sheet  # noqa: E402
+from pid2graph import load_graph  # noqa: E402
 
-G = "{http://graphml.graphdrawing.org/xmlns}"
 COARSE = {**{c: "valve" for c in [*range(1, 8), *range(9, 17), 25]}, **{c: "general" for c in [8, *range(17, 24)]},
           24: "arrow", **{c: "instrumentation" for c in range(26, 33)}}
 IGNORED = {"crossing", "connector", "background"}
@@ -24,14 +23,7 @@ SCALE = 4  # shortcut: chosen from the plans' annotated symbol sizes; a deployed
 
 
 def load_truth(path):
-    root = ET.parse(path).getroot()
-    keys = {k.get("id"): k.get("attr.name") for k in root.iter(G + "key")}
-    out = []
-    for n in root.iter(G + "node"):
-        v = {keys[d.get("key")]: d.text for d in n.iter(G + "data")}
-        if v["label"] not in IGNORED:
-            out.append((v["label"], [float(v[k]) for k in ("xmin", "ymin", "xmax", "ymax")]))
-    return out
+    return [(lab, box) for lab, box in load_graph(path)[0].values() if lab not in IGNORED]
 
 
 def score(preds, truth):
