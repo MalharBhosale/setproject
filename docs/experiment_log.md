@@ -254,3 +254,13 @@ Deviation from PLAN v2 item 1 ("no other reader variant"): one further reader, v
 Baseline, the reader_v1 weights on these validation crops (`python src/train_reader.py eval val_det`): **77.9% exact** (732 wrong), against 99.78% on ground-truth word crops. Confidently wrong examples: `KL-80483` read `KL-80` at 1.0, `DV-29035` read `29035` at 1.0. This quantifies the train/inference mismatch behind the v2 result.
 
 Kaggle package rebuilt with these files: `data/kaggle/reader_package.zip`, 280 MB, sha256 `f7509861aa63c5eafa0f276429c346b8323d6629b6e0ecfcd5576a21503d83c6`.
+
+## reader_v2b: CRNN trained with pipeline-cut crops (Kaggle, 2026-10-19)
+
+Same notebook and settings as reader_v1 (Tesla T4, 12 epochs, batch 64, seed 0), on 78,783 ground-truth crops plus 19,478 pipeline-cut crops; epoch chosen on 3,309 pipeline-cut crops from validation sheets. Outputs in `data/runs/reader_v2b/` (browser renamed the weights `crnn (1).zip`; renamed back, unchanged). Installed as `data/reader/crnn.pt`, sha256 `209dbe5f557f9daf877b6fda55b9475f4803f123146310b9351a1b3b31e4c0f7`; the reader_v1 weights are kept as `data/reader/crnn_v2.pt`.
+
+| Epoch | 1 | 3 | 5 | 8 | 10 | 11 (kept) | 12 |
+|---|---|---|---|---|---|---|---|
+| Exact on validation pipeline crops | 0.859 | 0.899 | 0.934 | 0.943 | 0.944 | **0.947** | 0.947 |
+
+Against 77.9% for the reader_v1 weights on the same crops. As before, these crops also chose the epoch, so 94.7% is slightly optimistic.
