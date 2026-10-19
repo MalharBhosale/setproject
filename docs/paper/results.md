@@ -75,6 +75,20 @@ What the table shows:
 
 **H2:** supported for rule B (confidence combined with format plausibility), not for confidence alone.
 
+### 4.1 Threshold-free comparison and ablation (computed after the test run; no setting changed)
+
+Each case is scored by the highest tau at which a rule still decides it, which ranks cases exactly. AURC is the mean risk over all coverage levels; lower is better. Format-only is rule B with no confidence threshold. Intervals come from 2,000 sheet-level bootstrap resamples.
+
+| Rule | Val coverage / risk at tau 0.98 | Val AURC | Test coverage / risk at tau 0.98 | Test AURC |
+|---|---|---|---|---|
+| A: confidence only | 98.0% / 24.8% | 0.139 | 96.0% / 24.0% | 0.154 |
+| Format only | 89.3% / 19.8% | n/a | 94.7% / 23.2% | n/a |
+| **B: confidence + format** | 50.3% / 4.0% | **0.077** | 52.3% / 6.4% | **0.090** |
+
+- Paired difference, A minus B, on test: AURC 0.064 [0.051, 0.080]; risk at tau 0.98, 17.6 points [14.5, 20.9]. Validation: 0.062 [0.050, 0.074] and 20.9 points [17.9, 23.5].
+- Neither signal alone makes automatic decisions trustworthy. Only the combination does.
+- **Review workload.** In rule B's REVIEW cases a median 56.7% of components are untrusted on test (57.3% on validation), with a median 66 flagged findings. The rule routes cases correctly but leaves most of each REVIEW drawing for a human to check.
+
 ## 5. What is not shown
 
 - H3 (calibration) was not tested before the test run; any later analysis is post hoc.

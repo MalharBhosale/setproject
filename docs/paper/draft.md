@@ -155,6 +155,7 @@ Full tables are in `results.md`.
 - **Rule A** stays close to the no-abstention point: at tau = 0.98 it decides 96.0% of test cases with 24.0% wrong. Every sheet contains confidently misread tags. On validation, 585 wrong readings had confidence 0.9 to 1.0, next to 3,579 correct ones, for example truncations such as `KL-80-` at 0.987 and `1J-74522` for `IJ-74522` at 0.923.
 - **Rule B,** at the frozen tau = 0.98, decides 52.3% of test cases [46.3, 58.3] with 6.4% wrong [3.1, 9.6], against 25.0% without abstention. On validation the figures were 50.3% and 4.0%. Coverage carries over to test; risk is higher than on validation and exceeds the 5% target set there.
 - Supported findings at this operating point have precision 0.728 and recall 0.301 on test.
+- **Threshold-free comparison.** Ranking cases by the highest tau at which each rule still decides them, the area under the risk-coverage curve (AURC) on test is 0.154 for rule A and 0.090 for rule B; the paired difference is 0.064 [0.051, 0.080] over 2,000 sheet-level resamples. The format check without any confidence threshold decides 94.7% of test cases with 23.2% wrong, no better than rule A. Neither signal works alone; the combination does. These figures were computed after the test run from the frozen outputs, with no setting changed.
 
 **No automatic PASS.** Under every rule and threshold, no matching pair is passed automatically. On test, rule B sends 65 of 75 matching pairs to REVIEW and wrongly fails 10. All automatic decisions are FAILs.
 
@@ -170,7 +171,7 @@ Limitations:
 - **Synthetic data.** Drawings and discrepancies are synthetic, and tag formats in the dataset are clean and regular. Real tags vary more, which would weaken the format signal.
 - **Small test set.** The risk estimate comes from 75 test sheets and is uncertain (3.1-9.6%). The 5% target chosen on validation was not met.
 - **Design on validation.** Rule B was introduced after rule A failed on validation. Its test performance is an honest held-out measurement, but its design was not pre-registered.
-- **No automatic PASS.** Practical value depends on how much of the REVIEW queue a human can clear quickly. We did not measure that.
+- **No automatic PASS, heavy REVIEW cases.** In rule B's REVIEW cases a median 56.7% of components are untrusted, so the engineer still checks most of each such drawing. We did not measure how quickly a human clears the queue.
 - **Real drawings.** Detection transfers only partly, and only at a matched scale; verification on real drawings is untested.
 - **Untested components.** Calibration (H3) and vision-language assistance were not evaluated. Graph reasoning was analysed but not built, because the benchmark has no connectivity discrepancies.
 
