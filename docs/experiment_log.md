@@ -278,3 +278,44 @@ Conventions:
 - **Unsure (32 rows):** part of the label is cut off or ambiguous, the nozzle label could belong to either of two flanges, or the source graph's class is wrong (flow elements labelled pump, bubbles labelled valve, a flange labelled inlet/outlet).
 
 Result: 754 of 988 symbols carry a tag (instrumentation 348, general 131, valve 129, inlet/outlet 95, tank 35, pump 16). The OCR suggestions pre-filled on the page were exactly right for 120 of the 754 (100 of 350 instrument bubbles). Agreement with the user's 13 earlier corrections: 12 identical; the 13th was nearby but unconnected text that the convention leaves empty.
+
+## pipeline_v2b / decide_v2b on validation (2026-10-19)
+
+`python src/pipeline.py data/runs/Kaggle1/predictions_val data/runs/pipeline_v2b val --reader=crnn` (reader_v2b weights), then `python src/decide.py data/runs/pipeline_v2b/extracted_val data/runs/decide_v2b val`, `python src/selective_metrics.py data/runs/pipeline_v2b/extracted_val val 0.90`, `python src/attribute_errors.py data/runs/pipeline_v2b/extracted_val val`.
+
+| Validation | v1 (EasyOCR) | v2 (reader_v1) | **v2b (reader_v2b)** |
+|---|---|---|---|
+| End-to-end tag exact | 62.1% | 69.4% | **87.6%** |
+| Rule B tau chosen by the unchanged rule | 0.98 | 1.00 | **0.90** |
+| Rule B coverage / risk at that tau | 50.3% / 4.0% | 26.0% / 0.0% | **62.7% / 4.8%** |
+| Rule B AURC | 0.077 | n/a | **0.058** |
+| Rule A AURC | 0.139 | n/a | 0.099 |
+| Format only: coverage / risk | 89.3% / 19.8% | n/a | 90.7% / 18.8% |
+| REVIEW cases: median share of untrusted components / findings to check | 57.3% / 65 | n/a | 37.4% / 20 |
+| Matching pairs passed automatically | 0 of 75 | 0 of 75 | 0 of 75 |
+
+v2b, validation, paired A minus B: AURC 0.041 [0.030, 0.053]; risk at tau 0.90, 15.5 points [12.6, 18.4]. Supported findings at tau 0.90: precision 0.835, recall 0.526. Error attribution of the 973 wrong tags: no text 45.2%, misread 44.6%, association 10.2%. Text that is never found is now the largest error source.
+
+By the amendment's criterion v2b does not fail on validation: it improves tag reading, coverage at the 5% risk target, AURC and review workload. It goes forward to a frozen test run.
+
+## FROZEN CONFIGURATION v2b for a second, disclosed test run (recorded 2026-10-19, before any v2/v2b processing of test sheets)
+
+The test sheets were used once, for v1 (TEST RESULTS above). Since then they have not been read, OCR-processed or verified by any v2/v2b code. Everything below is fixed and will not change after the test run; v1 and v2b test results will both be reported.
+
+| Component | Frozen setting |
+|---|---|
+| Detector and sheet predictions | unchanged from v1: `data/runs/Kaggle1/predictions_test` (made by the v1 frozen run) |
+| Text finding | unchanged from v1: `src/pipeline.py` MARGIN 80, INSET 0.12, READ_PAD 4, JOIN 0.6, VERTICAL_TURN 3; EasyOCR 1.7.2 detector |
+| Text reading | CRNN reader_v2b, `data/reader/crnn.pt`, sha256 `209dbe5f557f9daf877b6fda55b9475f4803f123146310b9351a1b3b31e4c0f7`; torch 2.14.1 CPU |
+| Decision | `src/decide.py`: DET_MIN 0.5; rule B (confidence + format shapes from the 350 training sheets); **tau = 0.90** |
+| Benchmark | test part: 300 cases on 75 sheets (75 PASS, 225 FAIL) |
+| Code | git commit containing this entry |
+
+Commands, run once:
+1. `python src/pipeline.py data/runs/Kaggle1/predictions_test data/runs/pipeline_v2b test --reader=crnn --allow-test`
+2. `python src/decide.py data/runs/pipeline_v2b/extracted_test data/runs/decide_v2b test --frozen-tau=0.90`
+3. `python src/bootstrap_ci.py test 0.90 data/runs/pipeline_v2b`
+4. `python src/selective_metrics.py data/runs/pipeline_v2b/extracted_test test 0.90`
+5. `python src/attribute_errors.py data/runs/pipeline_v2b/extracted_test test`
+
+Headline numbers: end-to-end tag exact; rule B coverage and risk at tau 0.90 with sheet-level intervals; AURC for rules A and B with the paired difference; auto-PASS rate; review workload. Compared with v1 test: coverage 52.3%, risk 6.4%, AURC 0.090.
