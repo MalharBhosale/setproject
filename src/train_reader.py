@@ -2,8 +2,9 @@
 
 Usage:
     python src/train_reader.py build          # word crops -> data/reader/{train,val}.npy (+ labels)
+    python src/train_reader.py build-detected <part> <n_sheets>   # v2b: crops cut by the pipeline's text finding
     python src/train_reader.py train [data_dir] [out_dir]   # best epoch on val crops -> <out_dir>/crnn.pt (GPU if available)
-    python src/train_reader.py eval           # word-exact accuracy on val crops
+    python src/train_reader.py eval [val|val_det] [weights]   # word-exact accuracy on a crop set
 
 Off-the-shelf EasyOCR read 80.8% of tags exactly from perfect word boxes; Gadekar et al. (2026) report 0.995 after
 fine-tuning TrOCR on this dataset's word crops. This reader trains from scratch on CPU instead.
@@ -89,6 +90,67 @@ def build():
     print("charset", len(chars), "".join(chars))
 
 
+def label_box(box, words):
+    """True text for a crop cut by the pipeline: the words it covers by at least half their area, in reading order.
+    None if it covers no word, or several words of vertical text (rare; order would be ambiguous)."""
+    x1, y1, x2, y2 = box
+    hit = []
+    for w in words:
+        a, b, c, d = w["box"]
+        inter = max(0, min(x2, c) - max(x1, a)) * max(0, min(y2, d) - max(y1, b))
+        if w["text"].strip() and inter >= 0.5 * max(1, (c - a) * (d - b)):
+            hit.append(w)
+    tall = (y2 - y1) > (x2 - x1)
+    if not hit or (tall and len(hit) > 1):
+        return None
+    return " ".join(w["text"] for w in sorted(hit, key=lambda w: (w["box"][1] // 10, w["box"][0])))
+
+
+def detected_crops(sheet_ids):
+    """Yield (crop, text) for text found by the pipeline's own text finding (pipeline.read_region, frozen settings),
+    in the regions of the true symbols, so training crops match what the reader meets at inference."""
+    import easyocr
+    from PIL import Image
+    import pipeline
+    Image.MAX_IMAGE_PIXELS = None
+    reader = easyocr.Reader(["en"], gpu=False, verbose=False)
+    for n, sid in enumerate(sheet_ids, 1):
+        sheet = json.loads(Path(f"data/annotations/{sid}.json").read_text(encoding="utf-8"))
+        page = np.asarray(Image.open(f"data/images/{sid}.jpg").convert("L"))
+        seen = set()
+        for s in sheet["symbols"]:
+            if s["cls"] in pipeline.UNTAGGED:
+                continue
+            x1, y1, x2, y2 = s["box"]
+            if s["cls"] in pipeline.INSIDE:
+                dx, dy = int((x2 - x1) * pipeline.INSET), int((y2 - y1) * pipeline.INSET)
+                region = (x1 + dx, y1 + dy, x2 - dx, y2 - dy)
+            else:
+                region = (x1 - pipeline.MARGIN, y1 - pipeline.MARGIN, x2 + pipeline.MARGIN, y2 + pipeline.MARGIN)
+            crops = []
+            keep = lambda cs: crops.extend(cs) or [("x", 1.0)] * len(cs)  # capture the exact crops the reader would get
+            for (box, _, _), crop in zip(pipeline.read_region(reader, page, *region, read_fn=keep), crops):
+                text = label_box(box, sheet["words"])
+                if text is not None and tuple(box) not in seen:
+                    seen.add(tuple(box))
+                    yield crop, text
+        print(f"  {n}/{len(sheet_ids)} sheets", flush=True)
+
+
+def build_detected(part, n_sheets):
+    """Pipeline-cut crops from the first n sheets of a split -> data/reader/<part>_det_{crops.npy,texts.json}."""
+    chars = set(json.loads((OUT / "charset.json").read_text(encoding="utf-8")))
+    sheets = json.loads(Path("docs/split.json").read_text(encoding="utf-8"))[part][:int(n_sheets)]
+    crops, texts = [], []
+    for crop, text in detected_crops(sheets):
+        if set(text) <= chars and min(crop.shape) > 2 and round(crop.shape[1] * H / crop.shape[0]) <= W:
+            crops.append(crop)
+            texts.append(text)
+    np.save(OUT / f"{part}_det_crops.npy", np.array(crops, dtype=object), allow_pickle=True)
+    (OUT / f"{part}_det_texts.json").write_text(json.dumps(texts, ensure_ascii=False), encoding="utf-8")
+    print(part, len(texts), "pipeline crops from", len(sheets), "sheets")
+
+
 def model(n_classes):
     import torch.nn as nn
 
@@ -144,10 +206,15 @@ def train(data=OUT, out=OUT, epochs=12, batch=64):
     device = "cuda" if torch.cuda.is_available() else "cpu"
     print("device", device, "| torch", torch.__version__, flush=True)
     chars = json.loads((data / "charset.json").read_text(encoding="utf-8"))
-    tr_c = np.load(data / "train_crops.npy", allow_pickle=True)  # our own file from build(), not untrusted input
-    tr_t = json.loads((data / "train_texts.json").read_text(encoding="utf-8"))
-    va_c = np.load(data / "val_crops.npy", allow_pickle=True)
-    va_t = json.loads((data / "val_texts.json").read_text(encoding="utf-8"))
+    load_set = lambda name: (list(np.load(data / f"{name}_crops.npy", allow_pickle=True)),  # our own files, not untrusted input
+                             json.loads((data / f"{name}_texts.json").read_text(encoding="utf-8")))
+    tr_c, tr_t = load_set("train")
+    if (data / "train_det_crops.npy").exists():  # v2b: add crops cut by the pipeline's own text finding
+        c, t = load_set("train_det")
+        tr_c, tr_t = tr_c + c, tr_t + t
+    va_name = "val_det" if (data / "val_det_crops.npy").exists() else "val"  # select on the crops met at inference
+    va_c, va_t = load_set(va_name)
+    print("train", len(tr_t), "| select on", va_name, len(va_t), flush=True)
     net = model(len(chars) + 1).to(device)
     opt = torch.optim.AdamW(net.parameters(), lr=1e-3, weight_decay=1e-4)
     sched = torch.optim.lr_scheduler.OneCycleLR(opt, max_lr=2e-3, total_steps=epochs * ((len(tr_t) + batch - 1) // batch))
@@ -174,20 +241,20 @@ def train(data=OUT, out=OUT, epochs=12, batch=64):
             total += float(loss.detach()) * len(idx)
         net.eval()
         acc = sum(t == p for t, (p, _) in zip(va_t, (r for k in range(0, len(va_t), 256) for r in read(net, chars, list(va_c[k:k + 256]))))) / len(va_t)
-        log.append({"epoch": ep, "train_loss": total / len(tr_t), "val_word_exact": acc})
+        log.append({"epoch": ep, "train_loss": total / len(tr_t), "val_word_exact": acc, "val_set": va_name})
         print(f"epoch {ep}: loss {total / len(tr_t):.4f}  val word exact {acc:.4f}", flush=True)
         if acc > best:
             best = acc
-            torch.save({"state": {k: v.cpu() for k, v in net.state_dict().items()}, "chars": chars, "epoch": ep, "val_word_exact": acc},
+            torch.save({"state": {k: v.cpu() for k, v in net.state_dict().items()}, "chars": chars, "epoch": ep, "val_word_exact": acc, "val_set": va_name},
                        out / "crnn.pt")
     (out / "train_log.json").write_text(json.dumps(log, indent=1), encoding="utf-8")
     print("best val word exact", best)
 
 
-def evaluate():
-    net, chars = load()
-    va_c = np.load(OUT / "val_crops.npy", allow_pickle=True)
-    va_t = json.loads((OUT / "val_texts.json").read_text(encoding="utf-8"))
+def evaluate(name="val", path=OUT / "crnn.pt"):
+    net, chars = load(path)
+    va_c = np.load(OUT / f"{name}_crops.npy", allow_pickle=True)
+    va_t = json.loads((OUT / f"{name}_texts.json").read_text(encoding="utf-8"))
     preds = [r for k in range(0, len(va_t), 256) for r in read(net, chars, list(va_c[k:k + 256]))]
     right = [c for t, (p, c) in zip(va_t, preds) if p == t]
     wrong = [(t, p, round(c, 3)) for t, (p, c) in zip(va_t, preds) if p != t]
@@ -197,4 +264,5 @@ def evaluate():
 
 
 if __name__ == "__main__":
-    {"build": build, "train": lambda: train(*sys.argv[2:4]), "eval": evaluate}[sys.argv[1]]()
+    {"build": build, "build-detected": lambda: build_detected(*sys.argv[2:4]), "train": lambda: train(*sys.argv[2:4]),
+     "eval": lambda: evaluate(*sys.argv[2:4])}[sys.argv[1]]()

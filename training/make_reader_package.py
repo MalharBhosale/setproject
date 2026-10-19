@@ -8,7 +8,8 @@ import json
 import zipfile
 from pathlib import Path
 
-FILES = ["train_crops.npy", "val_crops.npy", "train_texts.json", "val_texts.json", "charset.json"]
+FILES = ["train_crops.npy", "val_crops.npy", "train_texts.json", "val_texts.json", "charset.json",
+         "train_det_crops.npy", "train_det_texts.json", "val_det_crops.npy", "val_det_texts.json"]  # v2b: pipeline-cut crops
 ZIP, NB = Path("data/kaggle/reader_package.zip"), Path("training/kaggle_train_reader.ipynb")
 
 
@@ -21,7 +22,7 @@ def notebook():
 
 **Settings:** Accelerator = GPU (T4 or P100). Internet is not needed. *Add data*: your **private** dataset made from `reader_package.zip`.
 
-Trains for 12 epochs on 78,783 training-sheet word crops and keeps the epoch with the best exact-word accuracy on 16,967 validation-sheet crops. No test-sheet data is included.
+Reader v2b. Trains for 12 epochs on the 78,783 training-sheet word crops plus crops cut by the pipeline's own text finding on 150 training sheets, and keeps the epoch with the best exact-word accuracy on pipeline-cut crops from 25 validation sheets. No test-sheet data is included.
 
 **Outputs** in `/kaggle/working`: `crnn.pt` (weights), `train_log.json` (per-epoch loss and validation accuracy), `environment.json`. Download all three.
 """),
