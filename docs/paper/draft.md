@@ -32,20 +32,36 @@ This paper makes four contributions:
 - Few-shot detection addresses rare symbol classes [@jamieson2024fewshot].
 - Markup noise is identified as a cause of recognition errors [@shteriyanov2024density].
 - OCR for mechanical drawings reports a 94% recognition F1 with an 8% character error rate [@villenatoro2023ocr].
+- A training-free pipeline combines detection with a vision-language model for P&ID extraction [@ali2026trainingfree].
+- On the same dataset we use, Gadekar et al. fine-tune a TrOCR recogniser on word crops, raising exact reading of ground-truth word crops from 0.857 to 0.995 [@gadekar2026grounded].
+- Kang et al. digitise imaged P&IDs into intelligent ones and derive a BOM from the result, rather than checking the drawing against one [@kang2019digitization].
+- Dzhusupova et al. estimate material quantities from recognised P&ID content [@dzhusupova2025material].
 
-These works establish that extraction is feasible but imperfect; none verifies the extracted content against a specification.
+These works establish that extraction is feasible but imperfect; none verifies the extracted content against an independent specification.
 
-**Structure and graphs.** Graph search over pipe lines recovers symbol connectivity [@mani2020digitization]. Graph neural networks interpret mechanical drawings [@xie2022gnn; @zhang2023segmentation]. P&IDs can be converted into graphs with transformers [@sturmer2025pid2graph].
+**Structure, graphs and language models.**
+- Graph search over pipe lines recovers symbol connectivity [@mani2020digitization].
+- Graph neural networks interpret mechanical drawings [@xie2022gnn; @zhang2023segmentation].
+- P&IDs can be converted into graphs with transformers [@sturmer2025pid2graph] or multimodal language models [@zhu2026processgraphs]; synthetic topology-preserving data supports transfer to real plans [@prasad2026synthpid].
+- Question answering over P&IDs uses property graphs [@gupta2025pidqa] or machine-readable P&IDs [@alimin2025talking].
+- Gadekar et al. require vision-language answers about P&ID topology to cite a recovered evidence graph, and reject answers without cited evidence; they report no calibration or abstention [@gadekar2026grounded].
+- Benchmarks show the abilities and limits of general vision-language models on engineering tasks [@picard2025vlm].
+- A hybrid YOLO plus fine-tuned VLM pipeline parses mechanical-drawing annotations into structured data [@khan2026drawings].
 
-**Vision-language models.** Benchmarks show the abilities and limits of general vision-language models on engineering tasks [@picard2025vlm]. A hybrid YOLO plus fine-tuned VLM pipeline parses mechanical drawing annotations, with about 11% hallucinated fields [@khan2026drawings].
-
-**Checking and comparison.**
+**Checking, comparison and consistency.**
 - Kim et al. inspect the output of P&ID recognition for missed and misrecognised objects, comparing against the drawing itself [@kim2025inspection].
+- Dzhusupova et al. detect design-error patterns in P&IDs in an industrial setting [@dzhusupova2023errors].
+- Shteriyanov et al. validate and correct recognised P&ID metadata with configurable domain rules [@shteriyanov2026meaning].
+- Rule-based autocorrection operates on P&IDs represented as graphs [@schulzebalhorn2025autocorrection].
+- A transformer model flags inconsistencies in P&ID data held in a design database [@gomezvega2025consistency].
 - Drawing-Checker compares a target drawing with a reference drawing using a multimodal LLM [@zhou2026drawingchecker].
 - Youn et al. verify P&IDs against design rules with LLM-generated deterministic checks, but need DXF input; their image-based baseline reached 55.9% F1 [@youn2026compliance].
+- Alba et al. check electrical single-line diagrams against text-based network models; their vision-language verifiers raise mostly false alarms, which they attribute to the models mistaking their own misreadings for genuine mismatches [@alba2026sld]. This is the failure we measure as H1.
 - Chen and Cheng propose an audit architecture with deterministic rules, abstention states and human routing, without an implemented end-to-end system [@chen2026auditing].
 
-Our work differs in task (a raster drawing against an independent BOM) and in measuring how abstention trades coverage against error.
+**Selective prediction.** Rejecting uncertain inputs trades coverage against error [@chow1970reject], with theory for selective classification [@elyaniv2010selective] and practical methods for deep networks evaluated by risk-coverage curves [@geifman2017selective]. For OCR, confidence can be predicted to reject unreliable readings [@mor2018confidence]. We apply this framing at the level of a verification verdict rather than a single classification.
+
+**Position of this work.** To our knowledge, this is the first implemented and quantitatively evaluated system that verifies raster P&IDs against an independent BOM with a PASS / REVIEW / FAIL decision. It is also the first on engineering drawings to combine OCR confidence with a tag-format plausibility check learned from training data into an abstention rule evaluated by risk-coverage analysis. The search behind this statement was targeted rather than exhaustive.
 
 ## 3 Problem and benchmark
 
