@@ -96,6 +96,10 @@ With perfect extraction, the deterministic verifier reproduces 1,997 of 2,000 an
 
 ## 4 Method
 
+![Pipeline](figures/pipeline.png)
+
+*Figure 1: the pipeline. The reading test in the decision box applies only to text-bearing classes; untagged symbols need only the detector score. The BOM never influences extraction.*
+
 **Detection.** Sheets are cut into 1024 px tiles overlapping by 256 px, more than the largest symbol (157 px). A YOLO11 nano detector, COCO-pretrained, is trained on the training tiles: Kaggle T4, image size 1024, seed 0, 10 hours, 87 epochs. At inference, boxes touching an inner tile edge are dropped, because the symbol appears whole in a neighbouring tile, and duplicates are merged per class.
 
 **Text.** Training-sheet statistics fix where text sits:
