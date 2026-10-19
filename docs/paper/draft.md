@@ -37,7 +37,7 @@ These works establish that extraction is feasible but imperfect; none verifies t
 
 **Structure and graphs.** Graph search over pipe lines recovers symbol connectivity [@mani2020digitization]. Graph neural networks interpret mechanical drawings [@xie2022gnn; @zhang2023segmentation]. P&IDs can be converted into graphs with transformers [@sturmer2025pid2graph].
 
-**Vision-language models.** Benchmarks show the abilities and limits of general vision-language models on engineering tasks [@picard2025vlm]. A hybrid YOLO plus fine-tuned VLM pipeline parses mechanical drawing annotations, with about 11% hallucinated fields [@khan2025drawings].
+**Vision-language models.** Benchmarks show the abilities and limits of general vision-language models on engineering tasks [@picard2025vlm]. A hybrid YOLO plus fine-tuned VLM pipeline parses mechanical drawing annotations, with about 11% hallucinated fields [@khan2026drawings].
 
 **Checking and comparison.**
 - Kim et al. inspect the output of P&ID recognition for missed and misrecognised objects, comparing against the drawing itself [@kim2025inspection].
