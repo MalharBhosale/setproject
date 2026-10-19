@@ -319,3 +319,25 @@ Commands, run once:
 5. `python src/attribute_errors.py data/runs/pipeline_v2b/extracted_test test`
 
 Headline numbers: end-to-end tag exact; rule B coverage and risk at tau 0.90 with sheet-level intervals; AURC for rules A and B with the paired difference; auto-PASS rate; review workload. Compared with v1 test: coverage 52.3%, risk 6.4%, AURC 0.090.
+
+## TEST RESULTS v2b: second, disclosed run with the frozen v2b configuration (2026-10-19)
+
+Run exactly as listed in FROZEN CONFIGURATION v2b; nothing was changed before or after.
+
+| Test, 75 sheets | v1 (frozen, tau 0.98) | **v2b (frozen, tau 0.90)** |
+|---|---|---|
+| End-to-end tag exact | 61.6% | **87.7%** (7,010 of 7,991) |
+| Rule B coverage [95% CI] | 52.3% [46.3, 58.3] | **64.0% [59.3, 68.7]** |
+| Rule B risk [95% CI] | 6.4% [3.1, 9.6] | **4.2% [1.6, 6.8]** |
+| Rule B AURC / rule A AURC | 0.090 / 0.154 | **0.055** / 0.106 |
+| Format only: coverage / risk | 94.7% / 23.2% | 89.7% / 18.2% |
+| Supported findings at frozen tau: precision / recall | 0.728 / 0.301 | 0.829 / 0.504 |
+| REVIEW cases: median untrusted share / findings to check | 56.7% / 66 | 36.8% / 22 |
+| Matching pairs passed automatically | 0 of 75 | 0 of 75 |
+| Verdicts at frozen tau | PASS->FAIL 10, PASS->REVIEW 65, FAIL->FAIL 147, FAIL->REVIEW 78 | PASS->FAIL 8, PASS->REVIEW 67, FAIL->FAIL 184, FAIL->REVIEW 41 |
+
+- **The 5% risk target set on validation is met on test by v2b** (4.2%; the interval's upper end, 6.8%, still exceeds it).
+- v2b, test, paired A minus B: AURC 0.050 [0.039, 0.062]; risk at tau 0.90, 15.8 points [12.9, 18.6]. Combining confidence with format is still what makes automatic decisions trustworthy.
+- **v2b minus v1, paired over test sheets** (`python src/compare_runs.py data/runs/pipeline_v1/extracted_test 0.98 data/runs/pipeline_v2b/extracted_test 0.90 test`, computed after both frozen runs): coverage +11.7 points [5.3, 17.7]; AURC -0.035 [-0.047, -0.023]; risk -2.2 points [-5.3, +0.7], not significant.
+- Error attribution of the 981 wrong tags: no text 43.2%, misread 47.6%, association 9.2%.
+- Still no automatic PASS: every matching pair has at least one component the rule does not trust.
