@@ -1,8 +1,10 @@
 """Build a local labelling page for tags on the 12 real OPEN100 plans (PID2Graph), with OCR suggestions pre-filled.
 
 Usage: python src/make_label_sheet.py          -> data/open100_labels/index.html (+ crops/)
-Open index.html in a browser, correct each suggested tag (clear it if the symbol has no tag), then press
-"Export CSV" and save the file as data/open100_labels/labels.csv. Progress is kept in the browser between sessions.
+       python src/make_label_sheet.py --page-only   rebuild index.html from items.json (no OCR)
+Open index.html in a browser, correct each suggested tag (clear it if the symbol has no tag), tick "checked", then press
+"Export CSV" and save the file as data/open100_labels/labels.csv. Only checked rows count as labels.
+Progress is kept in the browser between sessions.
 The drawings' licence is unconfirmed: everything stays in data/ (git-ignored) and is for evaluation only.
 """
 import html
@@ -58,9 +60,10 @@ def main():
 
 def page(rows):
     items = "\n".join(
-        f'<div class="item" data-key="{r["plan"]}_{r["node"]}"><img src="crops/{r["crop"]}" alt="plan {r["plan"]} node {r["node"]}" loading="lazy">'
+        f'<div class="item" data-key="{r["plan"]}_{r["node"]}" data-label="{html.escape(r["label"])}"><img src="crops/{r["crop"]}" alt="plan {r["plan"]} node {r["node"]}" loading="lazy">'
         f'<div class="meta"><b>plan {r["plan"]}</b> &middot; {html.escape(r["label"])} &middot; node {r["node"]}'
         f'<label>Tag (empty if none) <input type="text" value="{html.escape(r["suggestion"], quote=True)}" data-suggestion="{html.escape(r["suggestion"], quote=True)}"></label>'
+        f'<label class="chk"><input type="checkbox" class="checked"> checked</label>'
         f'<label class="chk"><input type="checkbox" class="unsure"> unsure / unreadable</label></div></div>'
         for r in rows)
     return f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -74,29 +77,34 @@ header{{position:sticky;top:0;background:#fff;padding:8px 0;border-bottom:1px so
 input[type=text]{{font-size:18px;padding:4px 6px;width:260px}} .chk{{font-size:14px}}
 button{{font-size:16px;padding:6px 14px;margin-right:8px}}
 </style></head><body>
-<header><b>OPEN100 tag labelling</b> &mdash; correct each tag exactly as printed (clear it if the symbol has no tag).
-Progress saves in this browser. <span id="count"></span><br>
-<button id="export">Export CSV</button><button id="reset">Restore suggestions</button></header>
+<header><b>OPEN100 tag labelling</b> &mdash; correct each tag exactly as printed (clear it if the symbol has no tag), then tick <b>checked</b>.
+Only checked rows count. Progress saves in this browser. <span id="count"></span><br>
+<button id="export">Export CSV</button><button id="filter">Show instruments only</button><button id="reset">Restore suggestions</button></header>
 {items}
 <script>
 const KEY='open100-labels-v1';
 let saved={{}}; try{{saved=JSON.parse(localStorage.getItem(KEY)||'{{}}')}}catch(e){{}}
 const items=[...document.querySelectorAll('.item')];
-function store(){{const s={{}};items.forEach(d=>{{s[d.dataset.key]={{tag:d.querySelector('input[type=text]').value,unsure:d.querySelector('.unsure').checked}}}});
+function store(){{const s={{}};items.forEach(d=>{{s[d.dataset.key]={{tag:d.querySelector('input[type=text]').value,unsure:d.querySelector('.unsure').checked,checked:d.querySelector('.checked').checked}}}});
   try{{localStorage.setItem(KEY,JSON.stringify(s))}}catch(e){{}}
-  document.getElementById('count').textContent=items.length+' symbols'}}
-items.forEach(d=>{{const v=saved[d.dataset.key]; if(v){{d.querySelector('input[type=text]').value=v.tag; d.querySelector('.unsure').checked=v.unsure}}
+  document.getElementById('count').textContent=items.filter(d=>d.querySelector('.checked').checked).length+' of '+items.length+' checked'}}
+items.forEach(d=>{{const v=saved[d.dataset.key]; if(v){{d.querySelector('input[type=text]').value=v.tag; d.querySelector('.unsure').checked=v.unsure; d.querySelector('.checked').checked=!!v.checked}}
   d.querySelectorAll('input').forEach(i=>i.addEventListener('change',store))}});
 store();
 document.getElementById('export').onclick=()=>{{
   const q=s=>'"'+String(s).replace(/"/g,'""')+'"';
-  const lines=['plan,node,tag,unsure,suggestion'].concat(items.map(d=>{{const k=d.dataset.key,p=k.slice(0,k.indexOf('_')),n=k.slice(k.indexOf('_')+1);const t=d.querySelector('input[type=text]');
-    return [p,n,q(t.value.trim()),d.querySelector('.unsure').checked?1:0,q(t.dataset.suggestion)].join(',')}}));
+  const lines=['plan,node,label,tag,checked,unsure,suggestion'].concat(items.map(d=>{{const k=d.dataset.key,p=k.slice(0,k.indexOf('_')),n=k.slice(k.indexOf('_')+1);const t=d.querySelector('input[type=text]');
+    return [p,n,q(d.dataset.label),q(t.value.trim()),d.querySelector('.checked').checked?1:0,d.querySelector('.unsure').checked?1:0,q(t.dataset.suggestion)].join(',')}}));
   const a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([lines.join('\\n')],{{type:'text/csv'}})); a.download='labels.csv'; a.click()}};
+let only=false; document.getElementById('filter').onclick=e=>{{only=!only; e.target.textContent=only?'Show all symbols':'Show instruments only';
+  items.forEach(d=>{{d.style.display=(only&&d.dataset.label!=='instrumentation')?'none':''}})}};
 document.getElementById('reset').onclick=()=>{{if(confirm('Discard your edits and restore the OCR suggestions?')){{
-  items.forEach(d=>{{const t=d.querySelector('input[type=text]'); t.value=t.dataset.suggestion; d.querySelector('.unsure').checked=false}}); store()}}}};
+  items.forEach(d=>{{const t=d.querySelector('input[type=text]'); t.value=t.dataset.suggestion; d.querySelector('.unsure').checked=false; d.querySelector('.checked').checked=false}}); store()}}}};
 </script></body></html>"""
 
 
 if __name__ == "__main__":
-    main()
+    if "--page-only" in sys.argv:
+        (OUT / "index.html").write_text(page(json.loads((OUT / "items.json").read_text(encoding="utf-8"))), encoding="utf-8")
+    else:
+        main()
