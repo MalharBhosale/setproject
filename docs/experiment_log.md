@@ -246,3 +246,11 @@ Diagnosis: the reader is 99.78% exact on ground-truth word boxes but meets diffe
 ## PLAN v2 AMENDMENT (recorded 2026-10-19, before any v2 test use; the test sheets remain untouched since the v1 run)
 
 Deviation from PLAN v2 item 1 ("no other reader variant"): one further reader, v2b, is trained, because the diagnosis above shows a train/inference crop mismatch rather than a weak reader. v2b uses the same network, seed and schedule, trained on the original ground-truth crops **plus crops cut by the pipeline's own text finding** (EasyOCR detector, region rules and READ_PAD exactly as frozen) on training sheets, with true symbol boxes defining the regions and each crop labelled with the true words it covers. The epoch is selected on such pipeline crops from validation sheets. Everything else in PLAN v2 (tau rule, freeze, single disclosed test run, reporting v1 and v2 whatever they show) is unchanged. No further reader variants after v2b: if v2b fails on validation, v1 remains the reported system and v2/v2b are reported as negative results.
+
+## reader_v2b data: pipeline-cut crops (2026-10-19)
+
+`python src/train_reader.py build-detected val 25` and `... train 150`: 3,309 crops from the first 25 validation sheets and 19,478 from the first 150 training sheets, cut by `pipeline.read_region` with frozen settings inside true symbol regions, each labelled with the true words it covers by at least half their area. Some crops cut a word short, yet carry the full word as label; such crops are kept on purpose, so the reader can learn low confidence on them.
+
+Baseline, the reader_v1 weights on these validation crops (`python src/train_reader.py eval val_det`): **77.9% exact** (732 wrong), against 99.78% on ground-truth word crops. Confidently wrong examples: `KL-80483` read `KL-80` at 1.0, `DV-29035` read `29035` at 1.0. This quantifies the train/inference mismatch behind the v2 result.
+
+Kaggle package rebuilt with these files: `data/kaggle/reader_package.zip`, 280 MB, sha256 `f7509861aa63c5eafa0f276429c346b8323d6629b6e0ecfcd5576a21503d83c6`.
