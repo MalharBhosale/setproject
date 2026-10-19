@@ -46,22 +46,24 @@ These works establish that extraction is feasible but imperfect; none verifies t
 - Question answering over P&IDs uses property graphs [@gupta2025pidqa] or machine-readable P&IDs [@alimin2025talking].
 - Gadekar et al. require vision-language answers about P&ID topology to cite a recovered evidence graph, and reject answers without cited evidence; they report no calibration or abstention [@gadekar2026grounded].
 - Benchmarks show the abilities and limits of general vision-language models on engineering tasks [@picard2025vlm].
+- A vision-language model guided by one annotated visual example extracts assembly information from ambiguous engineering legend sheets [@shteriyanov2026icicle].
 - A hybrid YOLO plus fine-tuned VLM pipeline parses mechanical-drawing annotations into structured data [@khan2026drawings].
 
 **Checking, comparison and consistency.**
 - Kim et al. inspect the output of P&ID recognition for missed and misrecognised objects, comparing against the drawing itself [@kim2025inspection].
 - Dzhusupova et al. detect design-error patterns in P&IDs in an industrial setting [@dzhusupova2023errors].
-- Shteriyanov et al. validate and correct recognised P&ID metadata with configurable domain rules [@shteriyanov2026meaning].
+- Shteriyanov et al. read P&ID pipeline numbers with a fine-tuned OCR model and then apply rules derived from one example tag supplied by an engineer. A reading is kept only if it has the example's length and character types; kept readings are corrected and mapped to fields, reaching 91.1% end-to-end accuracy on 40 industrial P&IDs [@shteriyanov2026meaning]. Their structural check is close to our format test, but it filters and corrects text; it uses no recognition confidence, makes no abstention decision and does not compare against a list.
 - Rule-based autocorrection operates on P&IDs represented as graphs [@schulzebalhorn2025autocorrection].
 - A transformer model flags inconsistencies in P&ID data held in a design database [@gomezvega2025consistency].
 - Drawing-Checker compares a target drawing with a reference drawing using a multimodal LLM [@zhou2026drawingchecker].
 - Youn et al. verify P&IDs against design rules with LLM-generated deterministic checks, but need DXF input; their image-based baseline reached 55.9% F1 [@youn2026compliance].
 - Alba et al. check electrical single-line diagrams against text-based network models; their vision-language verifiers raise mostly false alarms, which they attribute to the models mistaking their own misreadings for genuine mismatches [@alba2026sld]. This is the failure we measure as H1.
 - Chen and Cheng propose an audit architecture with deterministic rules, abstention states and human routing, without an implemented end-to-end system [@chen2026auditing].
+- A recent doctoral thesis on industrial drawing extraction names, as future work, systems that flag low-confidence detections for human review [@shteriyanov2026thesis].
 
 **Selective prediction.** Rejecting uncertain inputs trades coverage against error [@chow1970reject], with theory for selective classification [@elyaniv2010selective] and practical methods for deep networks evaluated by risk-coverage curves [@geifman2017selective]. For OCR, confidence can be predicted to reject unreliable readings [@mor2018confidence]. We apply this framing at the level of a verification verdict rather than a single classification.
 
-**Position of this work.** To our knowledge, this is the first implemented and quantitatively evaluated system that verifies raster P&IDs against an independent BOM with a PASS / REVIEW / FAIL decision. It is also the first on engineering drawings to combine OCR confidence with a tag-format plausibility check learned from training data into an abstention rule evaluated by risk-coverage analysis. The search behind this statement was targeted rather than exhaustive.
+**Position of this work.** To our knowledge, this is the first implemented and quantitatively evaluated system that verifies raster P&IDs against an independent BOM with a PASS / REVIEW / FAIL decision. It is also the first on engineering drawings to combine OCR confidence with a tag-format plausibility check, learned per symbol class from training sheets rather than supplied by an engineer, into an abstention rule evaluated by risk-coverage analysis. The search behind this statement was targeted rather than exhaustive.
 
 ## 3 Problem and benchmark
 

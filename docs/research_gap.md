@@ -33,3 +33,4 @@ Status: working assessment as of 2026-10-10. It rests on a targeted search, not 
 - Two rows above rest on search summaries only.
 - Only 5 of the 15 original reference papers have been read beyond page 1.
 - Kim et al. 2021 and Shteriyanov et al. 2024 are available as abstracts only.
+- 2026-10-19: full texts of Shteriyanov et al. 2026 (Computers & Chemical Engineering), the ICICLE paper (SAC '26) and Shteriyanov's doctoral thesis were read. None verifies a drawing against a BOM or abstains; the journal paper's length and character-type check is the closest prior to our format test, used there to filter and correct readings. The thesis lists flagging low-confidence detections for human review as future work.
