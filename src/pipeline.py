@@ -102,8 +102,9 @@ def join_boxes(boxes):
     return boxes
 
 
-def read_region(reader, page, rx1, ry1, rx2, ry2):
-    """Find text in a region with EasyOCR's detector, then read each piece with the tuned settings."""
+def read_region(reader, page, rx1, ry1, rx2, ry2, read_fn=None):
+    """Find text in a region with EasyOCR's detector, then read each piece: with read_fn(crops) -> [(text, conf)] if given
+    (the domain-trained reader, src/train_reader.py), otherwise with EasyOCR and the tuned settings (v1)."""
     import numpy as np
     h, w = page.shape
     rx1, ry1, rx2, ry2 = max(0, rx1), max(0, ry1), min(w, rx2), min(h, ry2)
@@ -112,20 +113,24 @@ def read_region(reader, page, rx1, ry1, rx2, ry2):
     horizontal, free = reader.detect(np.ascontiguousarray(page[ry1:ry2, rx1:rx2]))
     boxes = [[b[0], b[2], b[1], b[3]] for b in horizontal[0]]  # detector gives x_min, x_max, y_min, y_max
     boxes += [[min(p[0] for p in q), min(p[1] for p in q), max(p[0] for p in q), max(p[1] for p in q)] for q in free[0]]
-    out = []
+    found = []
     for x1, y1, x2, y2 in join_boxes(boxes):
         X1, Y1, X2, Y2 = int(x1) + rx1, int(y1) + ry1, int(x2) + rx1, int(y2) + ry1
         crop = page[max(0, Y1 - READ_PAD):Y2 + READ_PAD, max(0, X1 - READ_PAD):X2 + READ_PAD]
-        if crop.size == 0:
-            continue
-        k = VERTICAL_TURN if (Y2 - Y1) > (X2 - X1) else 0
-        res = reader.recognize(np.ascontiguousarray(np.rot90(crop, k)), detail=1, allowlist=ALLOW)
+        if crop.size:
+            k = VERTICAL_TURN if (Y2 - Y1) > (X2 - X1) else 0
+            found.append(([X1, Y1, X2, Y2], np.ascontiguousarray(np.rot90(crop, k))))
+    if read_fn is not None:
+        return [(box, text, conf) for (box, _), (text, conf) in zip(found, read_fn([c for _, c in found])) if text]
+    out = []
+    for box, crop in found:
+        res = reader.recognize(crop, detail=1, allowlist=ALLOW)
         if res:
-            out.append(([X1, Y1, X2, Y2], " ".join(r[1] for r in res), float(min(r[2] for r in res))))
+            out.append((box, " ".join(r[1] for r in res), float(min(r[2] for r in res))))
     return out
 
 
-def extract_sheet(reader, page, preds, thr=EVAL_SCORE):
+def extract_sheet(reader, page, preds, thr=EVAL_SCORE, read_fn=None):
     kept = [p for p in preds if p["score"] >= thr]
     texts = []
     for p in kept:
@@ -134,9 +139,9 @@ def extract_sheet(reader, page, preds, thr=EVAL_SCORE):
         x1, y1, x2, y2 = (int(round(v)) for v in p["box"])
         if p["cls"] in INSIDE:
             dx, dy = int((x2 - x1) * INSET), int((y2 - y1) * INSET)
-            texts += read_region(reader, page, x1 + dx, y1 + dy, x2 - dx, y2 - dy)
+            texts += read_region(reader, page, x1 + dx, y1 + dy, x2 - dx, y2 - dy, read_fn)
         else:
-            texts += read_region(reader, page, x1 - MARGIN, y1 - MARGIN, x2 + MARGIN, y2 + MARGIN)
+            texts += read_region(reader, page, x1 - MARGIN, y1 - MARGIN, x2 + MARGIN, y2 + MARGIN, read_fn)
     owned = assign([(p["cls"], p["box"]) for p in kept], dedupe(texts))
     comps = []
     for i, p in enumerate(kept):
@@ -162,7 +167,12 @@ def tag_accuracy(comps, sheet):
 
 
 def main():
-    args = [a for a in sys.argv[1:] if a != "--allow-test"]
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    read_fn = None
+    if "--reader=crnn" in sys.argv:  # v2: domain-trained reader instead of EasyOCR recognition
+        import train_reader
+        net, chars = train_reader.load()
+        read_fn = lambda crops: train_reader.read(net, chars, crops)
     preds_dir, out = Path(args[0]), Path(args[1])
     part = args[2] if len(args) > 2 else "val"
     if part == "test" and "--allow-test" not in sys.argv:
@@ -182,7 +192,7 @@ def main():
             comps = json.loads(f.read_text(encoding="utf-8"))
         else:
             page = np.asarray(Image.open(f"data/images/{sid}.jpg").convert("L"))
-            comps = extract_sheet(reader, page, json.loads((preds_dir / f"{sid}.json").read_text(encoding="utf-8")))
+            comps = extract_sheet(reader, page, json.loads((preds_dir / f"{sid}.json").read_text(encoding="utf-8")), read_fn=read_fn)
             f.write_text(json.dumps(comps, ensure_ascii=False), encoding="utf-8")
         comps_by_sheet[sid] = comps
         tags.update(tag_accuracy(comps, json.loads(Path(f"data/annotations/{sid}.json").read_text(encoding="utf-8"))))
