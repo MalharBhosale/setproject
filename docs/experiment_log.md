@@ -225,3 +225,24 @@ Run: `training/kaggle_train_reader.ipynb` on a Tesla T4 (Python 3.13.15, torch 2
 `python src/train_reader.py eval`: 16,967 validation words, 99.78% exact, 37 wrong. Mean confidence 0.933 when right and 0.749 when wrong. Remaining errors are mostly I/J and dropped characters (`IQ` read as `JQ`, `GH-63446` as `GH-3446`). For comparison, EasyOCR read 80.8% of tags exactly from the same kind of perfect word boxes (ocr_v1), and Gadekar et al. (2026) report 0.995 with fine-tuned TrOCR.
 
 Caveat: the validation crops chose the kept epoch, so 99.78% is slightly optimistic; the v2 test run is the unbiased measurement. These are perfect word boxes; end-to-end reading also depends on text finding and assignment, which v2 leaves unchanged.
+
+## pipeline_v2 / decide_v2 on validation: domain reader end to end (2026-10-19)
+
+As pre-registered: `python src/pipeline.py data/runs/Kaggle1/predictions_val data/runs/pipeline_v2 val --reader=crnn`, then `python src/decide.py data/runs/pipeline_v2/extracted_val data/runs/decide_v2 val`.
+
+| Validation | v1 (EasyOCR) | v2 (CRNN) |
+|---|---|---|
+| End-to-end tag exact | 62.1% | 69.4% |
+| Rule B, tau chosen by the unchanged rule | 0.98: coverage 50.3%, risk 4.0% | 1.00: coverage 26.0%, risk 0.0% |
+| Rule B at tau 0.98 | coverage 50.3%, risk 4.0% | coverage 68.7%, risk 13.6% |
+| Matching pairs passed automatically | 0 of 75 | 0 of 75 |
+
+Error attribution (`src/attribute_errors.py`): misread 64.7%, no text 18.3%, association 17.1% of 2,410 wrong tags. Misreads of outside text are mostly truncations of a first or last character (`RV-05408` read `V-05408`, `27"` read `27`); in bubbles, digit swaps such as 5/9. Truncated readings often get confidence near 1.0, so the confidence no longer separates right from wrong.
+
+Diagnosis: the reader is 99.78% exact on ground-truth word boxes but meets different crops in the pipeline (EasyOCR detector boxes, joined pieces, clutter). A padding probe on the 5 OCR tuning sheets confirms it is brittle to crop geometry, not short of pixels: end-to-end exact 64.2% at READ_PAD 4, 25.5% at 8, 6.5% at 12. READ_PAD stays 4.
+
+**v2 as pre-registered does not improve the decision**: it is worse than v1 at the frozen-style operating point. This result is kept and will be reported.
+
+## PLAN v2 AMENDMENT (recorded 2026-10-19, before any v2 test use; the test sheets remain untouched since the v1 run)
+
+Deviation from PLAN v2 item 1 ("no other reader variant"): one further reader, v2b, is trained, because the diagnosis above shows a train/inference crop mismatch rather than a weak reader. v2b uses the same network, seed and schedule, trained on the original ground-truth crops **plus crops cut by the pipeline's own text finding** (EasyOCR detector, region rules and READ_PAD exactly as frozen) on training sheets, with true symbol boxes defining the regions and each crop labelled with the true words it covers. The epoch is selected on such pipeline crops from validation sheets. Everything else in PLAN v2 (tau rule, freeze, single disclosed test run, reporting v1 and v2 whatever they show) is unchanged. No further reader variants after v2b: if v2b fails on validation, v1 remains the reported system and v2/v2b are reported as negative results.
