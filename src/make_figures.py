@@ -56,6 +56,14 @@ def main():
             ax.plot(r["coverage"], r["risk"], marker="*", ms=12, color=color, zorder=5)
             ax.annotate(f"tau {FROZEN_TAU}: {r['coverage']:.0%} covered, {r['risk']:.1%} wrong", (r["coverage"], r["risk"]),
                         textcoords="offset points", xytext=(8, -12 if part == "val" else 6), fontsize=8, color=color)
+    v2b = Path("data/runs/decide_v2b/sweep_test_confidence_format.json")  # second, disclosed test run (domain-trained reader)
+    if v2b.exists():
+        rows = json.loads(v2b.read_text(encoding="utf-8"))["rows"]
+        ax.plot([r["coverage"] for r in rows], [r["risk"] for r in rows], color="#2e7d32", marker="o", ms=2.5, lw=1.6, label="Rule B, test, trained reader (v2b)")
+        r = next(r for r in rows if abs(r["tau"] - 0.90) < 1e-9)
+        ax.plot(r["coverage"], r["risk"], marker="*", ms=12, color="#2e7d32", zorder=5)
+        ax.annotate(f"tau 0.9: {r['coverage']:.0%} covered, {r['risk']:.1%} wrong", (r["coverage"], r["risk"]),
+                    textcoords="offset points", xytext=(14, -34), fontsize=8, color="#2e7d32")
     ax.axhline(TARGET, color="#b83227", lw=0.8, ls=":")
     ax.text(0.16, TARGET + 0.004, "5% target", fontsize=8, color="#b83227")
     ax.plot(1.0, 0.25, marker="s", ms=6, color="black")

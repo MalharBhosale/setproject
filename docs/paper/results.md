@@ -89,6 +89,27 @@ Each case is scored by the highest tau at which a rule still decides it, which r
 - Neither signal alone makes automatic decisions trustworthy. Only the combination does.
 - **Review workload.** In rule B's REVIEW cases a median 56.7% of components are untrusted on test (57.3% on validation), with a median 66 flagged findings. The rule routes cases correctly but leaves most of each REVIEW drawing for a human to check.
 
+### 4.2 Trained reader (v2b): second, disclosed test run
+
+EasyOCR still finds the text; a CRNN trained on ground-truth word crops plus crops cut by the pipeline itself reads it (details in `experiment_log.md`, reader_v2b). Protocol, amendment and frozen configuration were committed before the test sheets were processed again. tau = 0.90 was chosen on validation by the unchanged rule.
+
+| Test, 75 sheets | v1 (EasyOCR, tau 0.98) | **v2b (trained reader, tau 0.90)** |
+|---|---|---|
+| End-to-end tag exact | 61.6% | **87.7%** |
+| Rule B coverage [95% CI] | 52.3% [46.3, 58.3] | **64.0% [59.3, 68.7]** |
+| Rule B risk [95% CI] | 6.4% [3.1, 9.6] | **4.2% [1.6, 6.8]** |
+| AURC, rule B / rule A | 0.090 / 0.154 | **0.055** / 0.106 |
+| Supported findings: precision / recall | 0.728 / 0.301 | 0.829 / 0.504 |
+| REVIEW cases: median untrusted share / findings to check | 56.7% / 66 | 36.8% / 22 |
+| Matching pairs passed automatically | 0 of 75 | 0 of 75 |
+
+- Paired over test sheets, v2b minus v1: coverage +11.7 points [5.3, 17.7]; AURC -0.035 [-0.047, -0.023]; risk -2.2 points [-5.3, +0.7], not significant.
+- Within v2b, rule A minus rule B: AURC 0.050 [0.039, 0.062]. The format check is still needed.
+- A reader trained only on ground-truth word boxes (v2) read 99.8% of them but 77.9% of pipeline-cut crops, and made rule B worse on validation (tau 0.98: 68.7% coverage, 13.6% risk). It is reported as a negative result.
+- Wrong tags with v2b: misread 47.6%, no text found 43.2%, association 9.2%.
+
+The figure includes the v2b test curve (green).
+
 ## 5. What is not shown
 
 - H3 (calibration) was not tested before the test run; any later analysis is post hoc.

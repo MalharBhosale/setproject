@@ -1,10 +1,10 @@
 # Confidence-Aware Verification of Raster P&IDs Against Bills of Materials: Separating Extraction Failure from True Discrepancy
 
-*First draft, 2026-10-18. Citations use keys from `references.bib`. Every number comes from `experiment_log.md`. Title not yet agreed (see `outline.md`).*
+*First draft, 2026-10-18; v2b results added 2026-10-19. Citations use keys from `references.bib`. Every number comes from `experiment_log.md`. Title not yet agreed (see `outline.md`).*
 
 ## Abstract
 
-Checking a piping and instrumentation diagram (P&ID) against its bill of materials (BOM) is still done by hand, and many plants hold drawings only as raster images. Automating the check requires extracting components and tags from the image, and extraction makes mistakes that look exactly like real discrepancies. We study this problem on a paired benchmark of 2,000 drawing-BOM cases built from a public synthetic P&ID dataset, with discrepancies seeded into the BOM. A tiled YOLO detector finds symbols almost perfectly on held-out sheets (precision 0.9999, recall 1.0), but end-to-end tag reading reaches only 61.6%. A deterministic verifier that treats every extraction as fact therefore declares all 75 matching test pairs non-conforming. We add a PASS / REVIEW / FAIL decision in which a finding counts only when no untrusted component could explain it. Trusting readings by OCR confidence alone barely helps (24.0% wrong automatic decisions against 25.0% without abstention), because the OCR makes confident, systematic errors. Requiring readings to be confident and to match a tag format learned from training sheets reduces wrong automatic decisions to 6.4% (95% interval 3.1-9.6%) while still deciding 52.3% of cases automatically, with all parameters frozen before the single test run. The system never passes a matching pair automatically: it flags problems reliably but cannot yet certify a drawing as conforming. Error analysis places the bottleneck in reading rather than in assigning text to symbols, and a check on 12 real P&IDs shows partial transfer of the detector at a matched scale.
+Checking a piping and instrumentation diagram (P&ID) against its bill of materials (BOM) is still done by hand, and many plants hold drawings only as raster images. Automating the check requires extracting components and tags from the image, and extraction makes mistakes that look exactly like real discrepancies. We study this problem on a paired benchmark of 2,000 drawing-BOM cases built from a public synthetic P&ID dataset, with discrepancies seeded into the BOM. A tiled YOLO detector finds symbols almost perfectly on held-out sheets (precision 0.9999, recall 1.0), but end-to-end tag reading reaches only 61.6%. A deterministic verifier that treats every extraction as fact therefore declares all 75 matching test pairs non-conforming. We add a PASS / REVIEW / FAIL decision in which a finding counts only when no untrusted component could explain it. Trusting readings by OCR confidence alone barely helps (24.0% wrong automatic decisions against 25.0% without abstention), because the OCR makes confident, systematic errors. Requiring readings to be confident and to match a tag format learned from training sheets reduces wrong automatic decisions to 6.4% (95% interval 3.1-9.6%) while still deciding 52.3% of cases automatically, with all parameters frozen before the test run. Replacing the OCR recogniser with a small reader trained on text crops cut by the pipeline itself raises tag reading to 87.7%; in a second, pre-registered and disclosed test run this system decides 64.0% of cases with 4.2% wrong (95% interval 1.6-6.8%), and the area under the risk-coverage curve falls from 0.090 to 0.055. The system never passes a matching pair automatically: it flags problems reliably but cannot yet certify a drawing as conforming. Error analysis places the remaining bottleneck in finding and reading text rather than in assigning it to symbols, and a check on 12 real P&IDs shows partial transfer of the detector at a matched scale.
 
 **Keywords:** P&ID, engineering drawing verification, bill of materials, selective prediction, abstention, OCR, symbol detection
 
@@ -113,6 +113,8 @@ EasyOCR's detector finds text in the corresponding region; for bubbles, the outl
 
 We chose EasyOCR over RapidOCR (which runs PaddleOCR models). Tag accuracy on perfect word boxes was similar (80.8% and 82.4%), but EasyOCR is eight times faster on CPU and has a lower character error rate. PaddleOCR itself could not be installed.
 
+**Trained reader (v2b).** In a second version, EasyOCR still finds the text, but each piece is read by a small CRNN (convolutional layers, a two-layer bidirectional LSTM and CTC decoding) trained from scratch on a Kaggle T4 for 12 epochs. Its confidence is the product of the chosen characters' probabilities. A first reader trained only on ground-truth word boxes read 99.8% of such boxes correctly but only 77.9% of the crops the pipeline actually produces, and confidently: dropped edge characters received confidence near 1. The reader used here is therefore trained on 78,783 ground-truth word crops plus 19,478 crops cut by the pipeline's own text finding on 150 training sheets, each labelled with the true words it covers; its epoch is chosen on 3,309 such crops from 25 validation sheets, where it reads 94.7% exactly.
+
 **Verifier.** Extracted components are paired with BOM rows in four passes:
 1. same class and tag: a match;
 2. same tag, different class: TYPE;
@@ -142,6 +144,8 @@ All design choices were made on training and validation data:
 
 The complete configuration, including the detector weights' hash, was committed before any test sheet was processed. The test run was then executed once.
 
+The trained reader was developed afterwards on training and validation data only. Its protocol, including the rule for choosing tau and the commitment to report both versions, was recorded before the reader was evaluated; one amendment (adding pipeline-cut training crops after the first reader failed on validation) was also recorded before any test use. Tau = 0.90 was chosen on validation by the same rule, the configuration and reader hash were committed, and the test sheets were then processed a second time. Test results of both versions are reported.
+
 **Metrics:**
 - detection precision and recall at IoU >= 0.5;
 - exact tag match;
@@ -153,7 +157,7 @@ Intervals are 95% bootstrap intervals over the 75 test sheets (2,000 resamples),
 
 Full tables are in `results.md`.
 
-**Components.** On the 75 test sheets the detector finds 9,105 of 9,105 symbols with one false detection. End-to-end tag reading is exact for 61.6% of tags (62.1% on validation), against 89.0% when reading perfectly located words, so finding and assigning text costs about 25 points.
+**Components.** On the 75 test sheets the detector finds 9,105 of 9,105 symbols with one false detection. End-to-end tag reading is exact for 61.6% of tags (62.1% on validation), against 89.0% when reading perfectly located words, so finding and assigning text costs about 25 points. With the trained reader, end-to-end reading is exact for 87.7% of test tags (87.6% on validation).
 
 **H1: verification that trusts extraction.** Every one of the 75 matching test pairs is declared FAIL. Across the 300 test cases the verifier raises 20,978 false findings against 456 true ones. Misread tags become MISSING plus EXTRA pairs, and misread sizes make counts disagree.
 
@@ -161,32 +165,36 @@ Full tables are in `results.md`.
 - **Rule A** stays close to the no-abstention point: at tau = 0.98 it decides 96.0% of test cases with 24.0% wrong. Every sheet contains confidently misread tags. On validation, 585 wrong readings had confidence 0.9 to 1.0, next to 3,579 correct ones, for example truncations such as `KL-80-` at 0.987 and `1J-74522` for `IJ-74522` at 0.923.
 - **Rule B,** at the frozen tau = 0.98, decides 52.3% of test cases [46.3, 58.3] with 6.4% wrong [3.1, 9.6], against 25.0% without abstention. On validation the figures were 50.3% and 4.0%. Coverage carries over to test; risk is higher than on validation and exceeds the 5% target set there.
 - Supported findings at this operating point have precision 0.728 and recall 0.301 on test.
+- **Rule B with the trained reader (v2b),** at its frozen tau = 0.90, decides 64.0% of test cases [59.3, 68.7] with 4.2% wrong [1.6, 6.8]; on validation 62.7% and 4.8%. The 5% target is met, although the interval's upper end exceeds it. AURC is 0.055 (rule A 0.106), and supported findings have precision 0.829 and recall 0.504. Paired over test sheets against the first version, coverage rises by 11.7 points [5.3, 17.7] and AURC falls by 0.035 [0.023, 0.047]; the change in risk, -2.2 points [-5.3, +0.7], is not significant.
 - **Threshold-free comparison.** Ranking cases by the highest tau at which each rule still decides them, the area under the risk-coverage curve (AURC) on test is 0.154 for rule A and 0.090 for rule B; the paired difference is 0.064 [0.051, 0.080] over 2,000 sheet-level resamples. The format check without any confidence threshold decides 94.7% of test cases with 23.2% wrong, no better than rule A. Neither signal works alone; the combination does. These figures were computed after the test run from the frozen outputs, with no setting changed.
 
-**No automatic PASS.** Under every rule and threshold, no matching pair is passed automatically. On test, rule B sends 65 of 75 matching pairs to REVIEW and wrongly fails 10. All automatic decisions are FAILs.
+**No automatic PASS.** Under every rule, threshold and reader, no matching pair is passed automatically. On test, rule B sends 65 of 75 matching pairs to REVIEW and wrongly fails 10 (v2b: 67 and 8). All automatic decisions are FAILs. With the trained reader, REVIEW cases are lighter: a median 36.8% of components are untrusted and 22 findings need checking, against 56.7% and 66.
 
 **Where errors come from.** On validation, 74.1% of wrong tags are misreadings of the symbol's own text, 14.8% have no text assigned, and at most 11.1% are association errors in which the text of another symbol or a line label was taken. Only 2 errors involved a line label. Connectivity information could address at most the association errors, so a graph-reasoning component cannot remove the dominant error on this task. We did not pursue it further.
+
+With the trained reader, the 981 wrong test tags split into 47.6% misread, 43.2% with no text found and 9.2% association errors, so text finding has become as large a source of error as reading.
 
 **Real drawings.** On 12 real P&IDs from the OPEN100 project [@sturmer2025pid2graph], whose symbols are about four times smaller than in the synthetic data, the detector at matched scale finds 83.4% of symbols with the correct coarse label at 67.6% precision. At native scale results are much worse. Tanks, pumps and inlet/outlet markers, 10% of real symbols, never occur in the training data. These plans carry no text annotation, so tag reading and verification could not be evaluated on them.
 
 ## 7 Discussion and limitations
 
-The results separate two questions that are easily conflated: how accurate extraction is, and whether a verifier can tell when its extraction is wrong. On this benchmark detection is solved, reading is not, and confidence scores from the OCR engine do not reveal its systematic errors. A domain constraint as simple as the expected tag format provides the missing signal. The resulting system is useful in a specific way: it can raise discrepancies that are right most of the time and route the rest to an engineer. It does not replace the engineer, because it never certifies a drawing as conforming.
+The results separate two questions that are easily conflated: how accurate extraction is, and whether a verifier can tell when its extraction is wrong. On this benchmark detection is solved, reading is not, and confidence scores from the OCR engine do not reveal its systematic errors. A domain constraint as simple as the expected tag format provides the missing signal. A second lesson concerns the reader: one trained on clean word boxes was nearly perfect on them yet failed, confidently, on the crops the pipeline produces; training on the pipeline's own crops recovered most of the loss. Accuracy on isolated, perfectly cropped text is a poor guide to accuracy inside a pipeline. The resulting system is useful in a specific way: it can raise discrepancies that are right most of the time and route the rest to an engineer. It does not replace the engineer, because it never certifies a drawing as conforming.
 
 Limitations:
 - **Synthetic data.** Drawings and discrepancies are synthetic, and tag formats in the dataset are clean and regular. Real tags vary more, which would weaken the format signal.
-- **Small test set.** The risk estimate comes from 75 test sheets and is uncertain (3.1-9.6%). The 5% target chosen on validation was not met.
+- **Small test set.** Risk estimates come from 75 test sheets and are uncertain (v1 3.1-9.6%, v2b 1.6-6.8%). v1 missed the 5% target chosen on validation; v2b met it at its point estimate.
+- **Second look at the test sheets.** The trained-reader result comes from a second, disclosed test run. Its protocol and configuration were committed beforehand and nothing was tuned on test, but the test sheets had been seen once, so the comparison between versions is less clean than a single pre-registered run.
 - **Design on validation.** Rule B was introduced after rule A failed on validation. Its test performance is an honest held-out measurement, but its design was not pre-registered.
-- **No automatic PASS, heavy REVIEW cases.** In rule B's REVIEW cases a median 56.7% of components are untrusted, so the engineer still checks most of each such drawing. We did not measure how quickly a human clears the queue.
+- **No automatic PASS, REVIEW still needs work.** In rule B's REVIEW cases a median 56.7% of components are untrusted with the first reader and 36.8% with the trained reader, so the engineer still checks a large part of each such drawing. We did not measure how quickly a human clears the queue.
 - **Real drawings.** Detection transfers only partly, and only at a matched scale; verification on real drawings is untested.
 - **Untested components.** Calibration (H3) and vision-language assistance were not evaluated. Graph reasoning was analysed but not built, because the benchmark has no connectivity discrepancies.
 
 ## 8 Conclusion and future work
 
-Verifying raster P&IDs against bills of materials fails if extraction is trusted, and OCR confidence alone does not fix it. Combining confidence with format plausibility makes half of the decisions automatic with about 6% error on held-out synthetic sheets, while the remainder goes to review.
+Verifying raster P&IDs against bills of materials fails if extraction is trusted, and OCR confidence alone does not fix it. Combining confidence with format plausibility makes half of the decisions automatic with about 6% error on held-out synthetic sheets, and a reader trained on the pipeline's own crops raises this to about two thirds of decisions with about 4% error, while the remainder goes to review.
 
 Future work:
-- improve reading, which causes three quarters of the errors;
+- improve text finding, now the cause of over 40% of tag errors, and reading;
 - extend the specification with connectivity (for example a line list) so that graph reasoning becomes testable, using the aligned PID2Graph graphs;
 - build a real-drawing benchmark with text annotation;
 - study how quickly engineers clear the REVIEW queue.
