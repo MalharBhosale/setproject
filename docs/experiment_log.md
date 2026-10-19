@@ -200,3 +200,16 @@ Paired, A minus B: test AURC difference 0.064 [0.051, 0.080]; test risk differen
 Neither signal alone makes automatic decisions trustworthy; only the combination does.
 
 **Review workload (rule B, tau 0.98):** in REVIEW cases the median share of untrusted components is 56.7% on test (57.3% on validation), with a median of 66 flagged findings. The rule routes cases correctly but leaves a human most of each REVIEW drawing to check. **No matching pair is passed automatically under any rule** (0 of 75 on both splits). Both limits trace to end-to-end tag reading (61.6%).
+
+## PLAN v2: domain-trained text reader (recorded 2026-10-19, before the Kaggle-trained reader has been evaluated anywhere)
+
+Motivation: end-to-end tag reading (61.6% on test, 74% of wrong tags misreadings) caps both coverage and auto-PASS. v2 changes one component only: EasyOCR's recognition step is replaced by the CRNN in `src/train_reader.py`, trained on word crops from the 350 training sheets. Text finding (EasyOCR's detector), region rules, assignment, verifier and decision rule stay exactly as frozen for v1.
+
+Fixed in advance:
+1. **Reader selection.** The weights are the epoch with the best exact-word accuracy on validation-sheet word crops, as the training script saves them (12 epochs, seed 0). No other reader variant is tried. The file is copied to `data/reader/crnn.pt` and its sha256 recorded in the v2 freeze entry.
+2. **Validation run.** `python src/pipeline.py data/runs/Kaggle1/predictions_val data/runs/pipeline_v2 val --reader=crnn`, then `python src/decide.py data/runs/pipeline_v2/extracted_val data/runs/decide_v2 val`.
+3. **Threshold.** tau is chosen on validation by the unchanged rule in `decide.choose`: highest coverage with risk <= 5% (rule B). The CRNN's confidence (product of character probabilities) is on a different scale from EasyOCR's, so tau is re-chosen; the rule for choosing it is not changed.
+4. **Freeze, then test once.** A v2 FROZEN entry is committed before the test run. Commands: pipeline with `--reader=crnn --allow-test`, decide with `--frozen-tau=<chosen>`, then `python src/bootstrap_ci.py test <tau> data/runs/pipeline_v2` and `python src/selective_metrics.py data/runs/pipeline_v2/extracted_test test <tau>`.
+5. **Disclosure.** The test sheets were already used once for v1. The v2 test run is a second, disclosed look. Both v1 and v2 test results will be reported whatever v2 shows, and nothing is tuned after the v2 test run.
+
+Headline numbers for v2: end-to-end tag exact rate; rule B coverage and risk at the frozen tau with sheet-level intervals; AURC; auto-PASS rate on matching pairs; review workload.
